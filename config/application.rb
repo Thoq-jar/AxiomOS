@@ -22,7 +22,7 @@ module AxiomOs
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.0
-      
+
     # Enable Tailwind CSS
     config.assets.css_compressor = nil
     # Please, add to the `ignore` list any other `lib` subdirectories that do
