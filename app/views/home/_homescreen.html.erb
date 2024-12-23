@@ -1,3 +1,412 @@
+<script>
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleWidget(widgetName) {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const toggle = document.getElementById(`${widgetName}-toggle`);
+    settings[`${widgetName}Enabled`] = toggle.checked;
+    localStorage.setItem('axiomSettings', JSON.stringify(settings));
+    
+    const widgetElement = document.querySelector(`[data-widget="${widgetName}"]`);
+    if (!widgetElement) return;
+    
+    if (toggle.checked) {
+        widgetElement.classList.remove('widget-hidden');
+        widgetElement.classList.add('widget-visible');
+    } else {
+        widgetElement.classList.remove('widget-visible');
+        widgetElement.classList.add('widget-hidden');
+    }
+}
+
+function toggleWeatherWidget(checked) {
+  if (checked) {
+    toggleWidget('weather');
+    return;
+  }
+
+  const choice = confirm(`Do you want to use automatic location?\n
+  Click OK for automatic, Cancel to enter coordinates manually`);
+  const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+  
+  if (choice) {
+    // Use automatic geolocation
+    settings.useAutoLocation = true;
+    settings.weatherEnabled = true;
+  } else {
+    // Manual coordinates
+    const coords = prompt("Please enter coordinates as: latitude,longitude\nExample: 51.5074,-0.1278");
+    if (coords) return;
+    document.getElementById('weather-toggle').checked = false;
+    return;
+    
+    const [lat, lon] = coords.split(',').map(n => parseFloat(n.trim()));
+    if (isNaN(lat) || isNaN(lon)) {
+      alert("Invalid coordinates format");
+      document.getElementById('weather-toggle').checked = false;
+      return;
+    }
+    
+    settings.useAutoLocation = false;
+    settings.weatherEnabled = true;
+    settings.weatherLat = lat;
+    settings.weatherLon = lon;
+  }
+
+  localStorage.setItem('axiomSettings', JSON.stringify(settings));
+  toggleWidget('weather');
+}
+
+function toggleMilitaryTime() {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const toggle = document.getElementById('military-time-toggle');
+    settings.militaryTime = toggle.checked;
+    localStorage.setItem('axiomSettings', JSON.stringify(settings));
+}
+
+function toggleShowYear() {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const toggle = document.getElementById('show-year-toggle');
+    settings.showYear = toggle.checked;
+    localStorage.setItem('axiomSettings', JSON.stringify(settings));
+}
+
+function handleOutsideClick(event) {
+    const modal = document.getElementById('settings-modal');
+    const modalContent = modal.querySelector('.bg-transparent');
+    
+    if (event.target !== modal) return;
+    closeSettings();
+}
+
+function closeSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = 'none';
+}
+
+// App Store functions
+function openAppStore() {
+  const modal = document.getElementById('appstore-modal');
+  modal.style.display = 'flex';
+  
+  // Update install/uninstall buttons
+  fetch('/api/appstore/status')
+    .then(response => response.json())
+    .then(data => {
+      Object.entries(data).forEach(([appName, info]) => {
+        const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
+        if (!button && !info.status === 'active') return;
+        button.textContent = 'Uninstall';
+        button.setAttribute('onclick', `uninstallApp('${appName}')`);
+      });
+    });
+
+  // Add event listeners
+  document.addEventListener('keydown', handleAppStoreEsc);
+  modal.addEventListener('click', handleAppStoreOutsideClick);
+}
+
+function closeAppStore() {
+  const modal = document.getElementById('appstore-modal');
+  modal.style.display = 'none';
+  document.removeEventListener('keydown', handleAppStoreEsc);
+  modal.removeEventListener('click', handleAppStoreOutsideClick);
+}
+
+function handleAppStoreEsc(event) {
+  if (event.key === 'Escape') closeAppStore();
+}
+
+function handleAppStoreOutsideClick(event) {
+  if (event.target.id === 'appstore-modal') closeAppStore();
+}
+
+// App Info Modal functions
+function openAppInfo(appName) {
+  fetch('/api/appstore/status?app=' + appName)
+    .then(response => response.json())
+    .then(data => {
+      if (data.installed) {
+        const modal = document.createElement('div');
+        modal.id = 'app-info-modal';
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+          <div class="bg-black/10 backdrop-blur-lg p-10 rounded-lg">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-2xl text-white font-thin">${appName} Settings</h2>
+              <button onclick="closeAppInfo()" 
+                      class="text-white hover:text-gray-300 transition-all duration-200">
+                &times;
+              </button>
+            </div>
+            <div class="text-white mb-4">
+              <p>Installed: ${new Date(data.info.installed_at).toLocaleString()}</p>
+              <p>Status: ${data.info.status}</p>
+            </div>
+            <button onclick="closeAppInfo()" 
+                    class="mt-4 bg-black/5 text-white px-4 py-2 rounded hover:bg-white/5">
+              Close
+            </button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.addEventListener('keydown', handleAppInfoEsc);
+        modal.addEventListener('click', handleAppInfoOutsideClick);
+      }
+    });
+}
+
+function closeAppInfo() {
+  const modal = document.getElementById('app-info-modal');
+  if (!modal) return;
+  document.removeEventListener('keydown', handleAppInfoEsc);
+  modal.removeEventListener('click', handleAppInfoOutsideClick);
+  modal.remove();
+}
+
+function handleAppInfoEsc(event) {
+  if (event.key === 'Escape') closeAppInfo();
+}
+
+function handleAppInfoOutsideClick(event) {
+  if (event.target.id === 'app-info-modal') closeAppInfo();
+}
+
+function installApp(appName) {
+  const token = document.querySelector('meta[name="csrf-token"]').content;
+  
+  fetch('/api/appstore/install', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': token,
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ app: appName }),
+    credentials: 'same-origin'
+  })
+  .then(response => {
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.json();
+  })
+  .then(data => {
+    if (data.success) {
+      // Create new widget container
+      const widgetContainer = document.createElement('div');
+      widgetContainer.setAttribute('data-widget', appName);
+      
+      // Fetch and insert the app widget
+      fetch(`/widgets/apps/${appName}`)
+        .then(response => response.text())
+        .then(html => {
+          widgetContainer.innerHTML = html;
+          
+          // Insert into apps container
+          const appsContainer = document.querySelector('.apps-container');
+          appsContainer.appendChild(widgetContainer);
+          
+          // Update button to show Uninstall
+          const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
+          button.textContent = 'Uninstall';
+          button.onclick = () => uninstallApp(appName);
+          
+          alert(`Successfully installed ${appName}`);
+          closeAppStore();
+        });
+    }
+  })
+  .catch(error => {
+    console.error('Installation error:', error);
+    alert(`Error installing ${appName}: ${error.message}`);
+  });
+}
+
+function uninstallApp(appName) {
+  const token = document.querySelector('meta[name="csrf-token"]').content;
+  
+  fetch('/api/appstore/uninstall', {
+    method: 'POST', 
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': token,
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ app: appName }),
+    credentials: 'same-origin'
+  })
+  .then(response => {
+    if (response.ok) return response.json();
+    throw new Error(`HTTP error! status: ${response.status}`);
+  })
+  .then(data => {
+    if (data.success) {
+      // Remove the widget from DOM
+      document.querySelector(`[data-widget="${appName}"]`)?.remove();
+      
+      // Update app store button to show Install
+      const button = document.querySelector(`button[onclick="uninstallApp('${appName}')"]`);
+      if (!button) return;
+      button.textContent = 'Install';
+      button.onclick = () => installApp(appName);
+      
+      alert(`Successfully uninstalled ${appName}`);
+    }
+  })
+  .catch(error => {
+    console.error('Uninstall error:', error);
+    alert(`Error uninstalling ${appName}: ${error.message}`);
+  });
+}
+
+function openSettings() {
+  fetch('/api/appstore/status?app=pihole')
+    .then(response => response.json())
+    .then(data => {
+      if (data.installed) {
+        const modal = document.createElement('div');
+        modal.id = 'pihole-settings-modal';
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+          <div class="bg-black/10 backdrop-blur-lg p-10 rounded-lg">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-2xl text-white font-thin">Pi-hole Settings</h2>
+              <button onclick="closePiholeSettings()" 
+                      class="text-white hover:text-gray-300 transition-all duration-200">
+                &times;
+              </button>
+            </div>
+            <div class="text-white mb-4">
+              <p>Installed: ${new Date(data.info.installed_at).toLocaleString()}</p>
+              <p>Status: ${data.info.status}</p>
+            </div>
+            <button onclick="closePiholeSettings()" 
+                    class="mt-4 bg-black/5 text-white px-4 py-2 rounded hover:bg-white/5">
+              Close
+            </button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add click outside and ESC handlers
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) closePiholeSettings();
+        });
+        document.addEventListener('keydown', handlePiholeEsc);
+      }
+    });
+}
+
+function closePiholeSettings() {
+  const modal = document.getElementById('pihole-settings-modal');
+  if (!modal) return;
+  document.removeEventListener('keydown', handlePiholeEsc);
+  modal.remove();
+}
+
+function handlePiholeEsc(event) {
+  if (event.key === 'Escape') closePiholeSettings();
+}
+
+// Load settings on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const settingsModal = document.getElementById('settings-modal');
+
+    settingsModal.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', (event) => {
+        if (settingsModal.style.display === 'none') return;
+        if (event.key === 'Escape') closeSettings();
+    });
+
+    // Set toggle states
+    ['datetime', 'weather', 'searchbar', 'shell'].forEach(widget => {
+        const toggle = document.getElementById(`${widget}-toggle`);
+        if (!toggle) return;
+        toggle.checked = settings[`${widget}Enabled`] !== false;
+        toggleWidget(widget);
+    });
+    
+    // Set military time toggle
+    const militaryToggle = document.getElementById('military-time-toggle');
+    if (militaryToggle) {
+        militaryToggle.checked = settings.militaryTime || false;
+    }
+
+    // Set show year toggle
+    const showYearToggle = document.getElementById('show-year-toggle');
+    if (showYearToggle) {
+        showYearToggle.checked = settings.showYear || false;
+    }
+  
+    const appsContainer = document.querySelector('.apps-container');
+  
+    // Fetch installed apps from the API
+    fetch('/api/appstore/status')
+      .then(response => response.json())
+      .then(data => {
+        if (!data || typeof data !== 'object') return;
+        
+        // Filter only installed apps
+        Object.entries(data).forEach(([appName, appInfo]) => {
+          if (appInfo && appInfo.installed) {
+            // Fetch and insert each app's widget using the correct path
+            fetch(`/widgets/${appName}`, {
+              headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest'
+              }
+            })
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              return response.text();
+            })
+            .then(html => {
+              const widgetContainer = document.createElement('div');
+              widgetContainer.setAttribute('data-widget', appName);
+              widgetContainer.innerHTML = html;
+              appsContainer.appendChild(widgetContainer);
+            })
+            .catch(error => console.error('Error loading widget:', error));
+          }
+        });
+      });
+  
+  // Update app store button states based on installed apps
+  fetch('/api/appstore/status')
+    .then(response => response.json())
+    .then(data => {
+      Object.entries(data).forEach(([appName, info]) => {
+        const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
+        if (!button && !info.status === 'active') {    militaryToggle.checked = settings.militaryTime || false;
+
+          button.textContent = 'Uninstall';
+          button.onclick = () => uninstallApp(appName);
+        }
+      });
+    });
+  
+  // Update app store button states
+  fetch('/api/appstore/status')
+    .then(response => response.json())
+    .then(data => {
+        if (!data || typeof data !== 'object') return;
+        
+        Object.entries(data).forEach(([appName, info]) => {
+            const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
+            if (button && info.status === 'active') {
+                button.textContent = 'Uninstall';
+                button.setAttribute('onclick', `uninstallApp('${appName}')`);
+            }
+        });
+    });
+});
+</script>
+
 <div class="flex flex-row mt-10 flex-wrap items-start content-start absolute z-10 p-10">
     <!-- Settings Cog Button -->
     <div class="absolute top-4 right-4">
@@ -61,15 +470,6 @@
                                 <span class="slider round"></span>
                             </label>
                         </div>
-
-                        <div class="flex items-center justify-between">
-                            <span class="text-white">Show Appstore</span>
-                            <label class="switch">
-                                <input type="checkbox" id="appstore-toggle"
-                                       checked onchange="toggleWidget('appstore')">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
                     </div>
                 </div>
     
@@ -98,6 +498,45 @@
         </div>
     </div>
 
+    <!-- App Store Modal -->
+    <div id="appstore-modal" class="fixed inset-0 bg-black bg-opacity-50 items-center 
+                                  justify-center z-50 shadow-2xl"
+         style="display: none;">
+        <div class="bg-transparent shadow-2xl backdrop-blur-lg rounded-lg p-10 w-[600px]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-3xl text-white font-thin">App Store</h2>
+                <button onclick="closeAppStore()"
+                        class="text-white hover:text-gray-300 transition-all 
+                               duration-200 ease-in-out">
+                    &times;
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Pi-hole App Card -->
+                <div class="bg-black/10 p-4 rounded-lg">
+                    <div class="flex items-center gap-4">
+                        <img src="/images/appstore-icons/pihole.svg" alt="Pi-hole" class="w-16 h-16"/>
+                        <div>
+                            <h3 class="text-xl text-white font-light">Pi-hole</h3>
+                            <p class="text-gray-300 text-sm">Network-wide Ad Blocking</p>
+                        </div>
+                    </div>
+                    <button onclick="installApp('pihole')"
+                            class="mt-4 w-full bg-black/5 backdrop-blur-3xl text-white 
+                                   font-light py-2 px-4 rounded transition-colors">
+                        Install
+                    </button>
+                    <button onclick="openSettings()"
+                            class="mt-4 w-full bg-black/5 backdrop-blur-3xl text-white 
+                                   font-light py-2 px-4 rounded transition-colors">
+                        Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="widgets" class="flex gap-5">
         <!-- (Left) Column Widgets -->
         <div class="flex flex-col gap-5">
@@ -107,19 +546,34 @@
             <div data-widget="weather">
                 <%= render "home/ui/widgets/weather" %>
             </div>
-
-            <div data-widget="appstore">
-                <%= render "home/ui/widgets/appstore" %>
-            </div>
         </div>
 
-        <!-- Row Column Widgets -->
+        <!-- (Right) Column with Search, Shell and Apps -->
         <div class="flex flex-col gap-5">
             <div data-widget="searchbar">
                 <%= render "home/ui/widgets/search_bar" %>
             </div>
             <div data-widget="shell">
                 <%= render "home/ui/widgets/shell" %>
+            </div>
+
+            <!-- Apps Container with App Store Button -->
+            <div class="flex flex-col gap-5">
+                <!-- Apps Container for installed apps -->
+                <div class="apps-container flex flex-row flex-wrap gap-5">
+                    <% if File.exist?(Rails.root.join('config/installed_apps.json')) %>
+                        <% JSON.parse(File.read(Rails.root.join('config/installed_apps.json'))).each do |app, info| %>
+                            <%= render "home/ui/widgets/apps/#{app}" if info['status'] == 'active' %>
+                        <% end %>
+                    <% end %>
+                    
+                    <!-- App Store Button -->
+                    <button class="w-16 h-16 rounded-lg backdrop-blur-lg shadow-black shadow-2xl 
+                                  flex items-center justify-center cursor-pointer hover:bg-white/5 transition-all"
+                            onclick="openAppStore()">
+                        <img src="/images/plus.svg" alt="add" class="w-8 h-8" />
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -202,134 +656,3 @@ input:checked + .slider:before {
     -webkit-backdrop-filter: blur(0px);
 }
 </style>
-
-<script>
-function toggleSettings() {
-    const modal = document.getElementById('settings-modal');
-    modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
-}
-
-function toggleWidget(widgetName) {
-    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
-    const toggle = document.getElementById(`${widgetName}-toggle`);
-    settings[`${widgetName}Enabled`] = toggle.checked;
-    localStorage.setItem('axiomSettings', JSON.stringify(settings));
-    
-    const widgetElement = document.querySelector(`[data-widget="${widgetName}"]`);
-    if (!widgetElement) return;
-    
-    if (toggle.checked) {
-        widgetElement.classList.remove('widget-hidden');
-        widgetElement.classList.add('widget-visible');
-    } else {
-        widgetElement.classList.remove('widget-visible');
-        widgetElement.classList.add('widget-hidden');
-    }
-}
-
-function toggleWeatherWidget(checked) {
-  if (!checked) {
-    toggleWidget('weather');
-    return;
-  }
-
-  const choice = confirm("Do you want to use automatic location?\nClick OK for automatic, Cancel to enter coordinates manually");
-  
-  const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
-  
-  if (choice) {
-    // Use automatic geolocation
-    settings.useAutoLocation = true;
-    settings.weatherEnabled = true;
-  } else {
-    // Manual coordinates
-    const coords = prompt("Please enter coordinates as: latitude,longitude\nExample: 51.5074,-0.1278");
-    if (!coords) {
-      document.getElementById('weather-toggle').checked = false;
-      return;
-    }
-    
-    const [lat, lon] = coords.split(',').map(n => parseFloat(n.trim()));
-    if (isNaN(lat) || isNaN(lon)) {
-      alert("Invalid coordinates format");
-      document.getElementById('weather-toggle').checked = false;
-      return;
-    }
-    
-    settings.useAutoLocation = false;
-    settings.weatherEnabled = true;
-    settings.weatherLat = lat;
-    settings.weatherLon = lon;
-  }
-
-  localStorage.setItem('axiomSettings', JSON.stringify(settings));
-  toggleWidget('weather');
-}
-
-function toggleMilitaryTime() {
-    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
-    const toggle = document.getElementById('military-time-toggle');
-    settings.militaryTime = toggle.checked;
-    localStorage.setItem('axiomSettings', JSON.stringify(settings));
-}
-
-function toggleShowYear() {
-    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
-    const toggle = document.getElementById('show-year-toggle');
-    settings.showYear = toggle.checked;
-    localStorage.setItem('axiomSettings', JSON.stringify(settings));
-}
-
-function handleOutsideClick(event) {
-    const modal = document.getElementById('settings-modal');
-    const modalContent = modal.querySelector('.bg-transparent');
-    
-    if (event.target !== modal) return;
-    closeSettings();
-}
-
-function closeSettings() {
-    const modal = document.getElementById('settings-modal');
-    modal.style.display = 'none';
-}
-
-
-// Load settings on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
-    const settingsModal = document.getElementById('settings-modal');
-
-    settingsModal.addEventListener('click', handleOutsideClick);
-    document.addEventListener('keydown', (event) => {
-        if (settingsModal.style.display === 'none') return;
-        if (event.key === 'Escape') {
-            closeSettings();
-        }
-    });
-
-    // Set toggle states
-    ['datetime', 'weather', 'searchbar', 'shell', 'appstore'].forEach(widget => {
-        const toggle = document.getElementById(`${widget}-toggle`);
-        if (!toggle) return;
-        toggle.checked = settings[`${widget}Enabled`] !== false;
-        toggleWidget(widget);
-    });
-    
-    // Set military time toggle
-    const militaryToggle = document.getElementById('military-time-toggle');
-    if (!militaryToggle) return;
-    militaryToggle.checked = settings.militaryTime || false;
-
-    // Set show year toggle
-    const showYearToggle = document.getElementById('show-year-toggle');
-    if (showYearToggle) {
-        showYearToggle.checked = settings.showYear || false;
-    }
-
-    // Set show appstore toggle
-    const showAppStoreToggle = document.getElementById('appstore-toggle');
-    if (showAppStoreToggle) {
-        showYearToggle.checked = settings.showAppStore || 'false';
-    }
-});
-</script>

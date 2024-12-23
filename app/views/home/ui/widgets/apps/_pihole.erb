@@ -1,0 +1,46 @@
+<script lang="js">
+  function openSettings() {
+    fetch('/api/appstore/status?app=pihole')
+      .then(response => response.json())
+      .then(data => {
+        if (data.installed) {
+          const modal = document.createElement('div');
+          modal.innerHTML = `
+            <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+              <div class="bg-black/10 backdrop-blur-lg p-10 rounded-lg">
+                <h2 class="text-2xl text-white font-thin mb-4">Pi-hole Settings</h2>
+                <div class="text-white mb-4">
+                  <p>Installed: ${new Date(data.info.installed_at).toLocaleString()}</p>
+                  <p>Status: ${data.info.status}</p>
+                </div>
+                <button onclick="this.closest('.fixed').remove()" 
+                        class="mt-4 bg-black/5 text-white px-4 py-2 rounded">
+                  Close
+                </button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        } else {
+          alert('App is not installed properly');
+        }
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/appstore/status?app=pihole')
+      .then(response => response.json())
+      .then(data => {
+        if (data.installed) return;
+        document.querySelector('[data-widget="pihole"]')?.remove();
+      });
+  });
+</script>
+
+<div class="w-16 h-16 rounded-lg backdrop-blur-lg shadow-black shadow-2xl 
+            flex items-center justify-center cursor-pointer hover:bg-white/5 transition-all"
+     data-widget="pihole">
+    <button onclick="openSettings()">
+        <img src="/images/appstore-icons/pihole.svg" class="w-8 h-8" alt="pihole" />
+    </button>          
+</div>

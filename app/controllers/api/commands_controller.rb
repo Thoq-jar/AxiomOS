@@ -25,7 +25,8 @@ module Api
         "screenfetch" => [],
         "pfetch" => [],
         "ping" => :any,
-        "help" => []
+        "help" => [],
+        "docker" => :any,
       }
 
       if allowed_commands.key?(base_cmd)
