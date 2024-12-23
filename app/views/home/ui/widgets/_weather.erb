@@ -2,7 +2,7 @@
 <script lang="js">
     function getWeather() {
         const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
-        
+
         if (settings.useAutoLocation) {
             // Use existing geolocation API
             fetch('/api/geolocation')

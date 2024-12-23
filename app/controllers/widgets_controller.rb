@@ -5,7 +5,7 @@ class WidgetsController < ApplicationController
     if ALLOWED_WIDGETS.include?(params[:name])
       render partial: "home/ui/widgets/apps/#{params[:name]}"
     else
-      render plain: "Widget not found", status: :not_found
+      render plain: "ERROR: ACTION NOT ALLOWED", status: :forbidden
     end
   rescue ActionView::MissingTemplate
     render plain: "Widget not found", status: :not_found

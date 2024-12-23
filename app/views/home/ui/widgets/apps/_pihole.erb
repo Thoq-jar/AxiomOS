@@ -13,7 +13,7 @@
                   <p>Installed: ${new Date(data.info.installed_at).toLocaleString()}</p>
                   <p>Status: ${data.info.status}</p>
                 </div>
-                <button onclick="this.closest('.fixed').remove()" 
+                <button onclick="this.closest('.fixed').remove()"
                         class="mt-4 bg-black/5 text-white px-4 py-2 rounded">
                   Close
                 </button>
@@ -37,10 +37,10 @@
   });
 </script>
 
-<div class="w-16 h-16 rounded-lg backdrop-blur-lg shadow-black shadow-2xl 
+<div class="w-16 h-16 rounded-lg backdrop-blur-lg shadow-black shadow-2xl
             flex items-center justify-center cursor-pointer hover:bg-white/5 transition-all"
      data-widget="pihole">
     <button onclick="openSettings()">
         <img src="/images/appstore-icons/pihole.svg" class="w-8 h-8" alt="pihole" />
-    </button>          
+    </button>
 </div>
