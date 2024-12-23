@@ -1,5 +1,9 @@
 #!/usr/bin/env ruby
 
-puts "Running pre-commit hooks..."
-exec("bin/brakeman --no-pager")
-exec("bin/rubocop -f github")
+puts "[PRE] Running pre-commit hooks..."
+
+puts "[PRE] Running Brakeman..."
+system("bin/brakeman --no-pager")
+
+puts "[PRE] Running RuboCop..."
+system("bin/rubocop -f github")
