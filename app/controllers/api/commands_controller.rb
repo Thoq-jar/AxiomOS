@@ -26,7 +26,7 @@ module Api
         "pfetch" => [],
         "ping" => :any,
         "help" => [],
-        "docker" => :any,
+        "docker" => :any
       }
 
       if allowed_commands.key?(base_cmd)
@@ -45,8 +45,8 @@ module Api
       else
         render json: { error: "Command not allowed" }, status: :forbidden
       end
-    rescue => e
-      render json: { error: e.message }, status: :internal_server_error
+    rescue => error
+      render json: { error: error.message }, status: :internal_server_error
     end
 
     private

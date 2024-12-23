@@ -10,7 +10,7 @@ Rails.application.routes.draw do
   get "/widgets/apps/:name", to: "widgets#show"
 
   namespace :api do
-    get 'appstore/status', to: 'appstore#status'
-    post 'appstore', to: 'appstore#install'
+    get "appstore/status", to: "appstore#status"
+    post "appstore", to: "appstore#install"
   end
 end

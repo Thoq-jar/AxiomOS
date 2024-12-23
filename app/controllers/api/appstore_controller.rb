@@ -3,34 +3,34 @@ module Api
     protect_from_forgery with: :null_session
     skip_before_action :verify_authenticity_token
 
-    APPS_FILE = Rails.root.join('config', 'installed_apps.json')
+    APPS_FILE = Rails.root.join("config", "installed_apps.json")
 
     def install
       app = params[:app]
-      
+
       # Load or initialize installed apps
       installed_apps = load_installed_apps
       installed_apps[app] = {
         installed_at: Time.current,
-        status: 'active'
+        status: "active"
       }
-      
+
       # Save to file
       save_installed_apps(installed_apps)
-      
+
       render json: { success: true }
-    rescue => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    rescue => error
+      render json: { success: false, error: error.message }, status: :unprocessable_entity
     end
 
     def uninstall
       app = params[:app]
-      
+
       installed_apps = load_installed_apps
       installed_apps.delete(app)
-      
+
       save_installed_apps(installed_apps)
-      
+
       render json: { success: true }
     rescue => e
       render json: { success: false, error: e.message }, status: :unprocessable_entity
@@ -39,7 +39,7 @@ module Api
     def status
       app = params[:app]
       installed_apps = load_installed_apps
-      
+
       render json: {
         installed: installed_apps.key?(app),
         info: installed_apps[app]
