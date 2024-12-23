@@ -61,6 +61,15 @@
                                 <span class="slider round"></span>
                             </label>
                         </div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Show Appstore</span>
+                            <label class="switch">
+                                <input type="checkbox" id="appstore-toggle"
+                                       checked onchange="toggleWidget('appstore')">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
     
@@ -97,6 +106,10 @@
             </div>
             <div data-widget="weather">
                 <%= render "home/ui/widgets/weather" %>
+            </div>
+
+            <div data-widget="appstore">
+                <%= render "home/ui/widgets/appstore" %>
             </div>
         </div>
 
@@ -256,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Set toggle states
-    ['datetime', 'weather', 'searchbar', 'shell'].forEach(widget => {
+    ['datetime', 'weather', 'searchbar', 'shell', 'appstore'].forEach(widget => {
         const toggle = document.getElementById(`${widget}-toggle`);
         if (!toggle) return;
         toggle.checked = settings[`${widget}Enabled`] !== false;
@@ -272,6 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const showYearToggle = document.getElementById('show-year-toggle');
     if (showYearToggle) {
         showYearToggle.checked = settings.showYear || false;
+    }
+
+    // Set show appstore toggle
+    const showAppStoreToggle = document.getElementById('appstore-toggle');
+    if (showAppStoreToggle) {
+        showYearToggle.checked = settings.showAppStore || 'false';
     }
 });
 </script>
