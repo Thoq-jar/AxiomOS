@@ -1,28 +1,34 @@
 <!--suppress JSUnresolvedReference -->
 <script lang="js">
     function getWeather() {
-        // Fetch the user's location data based on their IP address
-        fetch('/api/geolocation')
+        const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+        
+        if (settings.useAutoLocation) {
+            // Use existing geolocation API
+            fetch('/api/geolocation')
+                .then(response => response.json())
+                .then(data => fetchWeatherData(data.lat, data.lon, data.city));
+        } else {
+            // Use saved coordinates
+            fetchWeatherData(settings.weatherLat, settings.weatherLon, 'Custom Location');
+        }
+    }
+
+    function fetchWeatherData(lat, lon, city) {
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
             .then(response => response.json())
-            .then(data => {
-                const {lat, lon, city} = data;
+            .then(weatherData => {
+                const weather = weatherData.current_weather;
+                const fahrenheit = (weather.temperature * 9 / 5) + 32;
 
-                // Fetch the current weather data using the latitude and longitude
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
-                    .then(response => response.json())
-                    .then(weatherData => {
-                        const weather = weatherData.current_weather;
-                        const fahrenheit = (weather.temperature * 9 / 5) + 32;
-
-                        // Update the UI element with the weather data
-                        document.getElementById('weather').innerHTML = `
-                            <p class="text-3xl mb-2">${city}</p>
-                            <p>Temp- ${weather.temperature}°C (${Math.round(fahrenheit)}°F)</p>
-                            <p>Speed- ${weather.windspeed} km/h</p>
-                            <p>Direction- ${weather.winddirection}°</p>
-                        `;
-                    }).catch(error => console.error('Error fetching weather data:', error));
-            }).catch(error => console.error('Error fetching location data:', error));
+                // Update the UI element with the weather data
+                document.getElementById('weather').innerHTML = `
+                    <p class="text-3xl mb-2">${city}</p>
+                    <p>Temp- ${weather.temperature}°C (${Math.round(fahrenheit)}°F)</p>
+                    <p>Speed- ${weather.windspeed} km/h</p>
+                    <p>Direction- ${weather.winddirection}°</p>
+                `;
+            }).catch(error => console.error('Error fetching weather data:', error));
     }
 
     // Event listener to fetch the weather data when the page loads

@@ -41,7 +41,7 @@
                         <div class="flex items-center justify-between">
                             <span class="text-white">Weather Widget</span>
                             <label class="switch">
-                                <input type="checkbox" id="weather-toggle" checked onchange="toggleWidget('weather')">
+                                <input type="checkbox" id="weather-toggle" checked onchange="toggleWeatherWidget(this.checked)">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -225,6 +225,45 @@ function toggleWidget(widgetName) {
         widgetElement.classList.remove('widget-visible');
         widgetElement.classList.add('widget-hidden');
     }
+}
+
+function toggleWeatherWidget(checked) {
+  if (!checked) {
+    toggleWidget('weather');
+    return;
+  }
+
+  const choice = confirm("Do you want to use automatic location?\nClick OK for automatic, Cancel to enter coordinates manually");
+  
+  const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+  
+  if (choice) {
+    // Use automatic geolocation
+    settings.useAutoLocation = true;
+    settings.weatherEnabled = true;
+  } else {
+    // Manual coordinates
+    const coords = prompt("Please enter coordinates as: latitude,longitude\nExample: 51.5074,-0.1278");
+    if (!coords) {
+      document.getElementById('weather-toggle').checked = false;
+      return;
+    }
+    
+    const [lat, lon] = coords.split(',').map(n => parseFloat(n.trim()));
+    if (isNaN(lat) || isNaN(lon)) {
+      alert("Invalid coordinates format");
+      document.getElementById('weather-toggle').checked = false;
+      return;
+    }
+    
+    settings.useAutoLocation = false;
+    settings.weatherEnabled = true;
+    settings.weatherLat = lat;
+    settings.weatherLon = lon;
+  }
+
+  localStorage.setItem('axiomSettings', JSON.stringify(settings));
+  toggleWidget('weather');
 }
 
 function toggleMilitaryTime() {
