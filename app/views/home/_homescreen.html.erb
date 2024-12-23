@@ -1,0 +1,16 @@
+<div class="flex flex-row mt-10 flex-wrap items-start content-start absolute z-10 p-10">
+
+    <div id="widgets" class="flex gap-5">
+        <!-- (Left) Column Widgets -->
+        <div class="flex flex-col gap-5">
+            <%= render "home/ui/widgets/date_time" %>
+            <%= render "home/ui/widgets/weather" %>
+        </div>
+
+        <!-- Row Column Widgets -->
+        <div class="flex flex-col gap-5">
+            <%= render "home/ui/widgets/search_bar" %>
+            <%= render "home/ui/widgets/shell" %>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,22 @@
+<script lang="js">
+    const OS_NAME = "AxiomOS";
+
+    function setTitle() {
+        const date = new Date();
+        const name = document.getElementById("name");
+        const hours = date.getHours();
+        let timeName = `${OS_NAME} - Good morning`;
+
+        if (hours >= 12 && hours < 17) timeName = `${OS_NAME} - Good afternoon`;
+        else if (hours >= 17 && hours < 20) timeName = `${OS_NAME} - Good evening`;
+        else if (hours >= 20 || hours < 5) timeName = `${OS_NAME} - Good night`;
+
+        name.textContent = timeName;
+    }
+
+    document.addEventListener("DOMContentLoaded", setTitle);
+</script>
+
+<div class="flex flex-col text-center bg-transparent z-10 p-2 absolute inset-0 w-full h-full">
+    <h1 class="text-3xl font-extralight" id="name">AxiomOS</h1>
+</div>

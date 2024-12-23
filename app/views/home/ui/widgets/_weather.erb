@@ -1,0 +1,37 @@
+<!--suppress JSUnresolvedReference -->
+<script lang="js">
+    function getWeather() {
+        // Fetch the user's location data based on their IP address
+        fetch('http://ip-api.com/json')
+            .then(response => response.json())
+            .then(data => {
+                const {lat, lon} = data;
+
+                // Fetch the current weather data using the latitude and longitude
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                    .then(response => response.json())
+                    .then(weatherData => {
+                        const weather = weatherData.current_weather;
+                        const fahrenheit = (weather.temperature * 9 / 5) + 32;
+
+                        // Update the UI element with the weather data
+                        document.getElementById('weather').innerHTML = `
+                            <p>Temp: ${weather.temperature}°C (${Math.round(fahrenheit)}°F)</p>
+                            <p>Wind: ${weather.windspeed} km/h</p>
+                            <p>Wind Direction: ${weather.winddirection}°</p>
+                        `;
+                    }).catch(error => console.error('Error fetching weather data:', error));
+            }).catch(error => console.error('Error fetching location data:', error));
+    }
+
+    // Event listener to fetch the weather data when the page loads
+    document.addEventListener("DOMContentLoaded", () => {
+        getWeather();
+        setInterval(getWeather, 60000);
+    });
+</script>
+
+<div class="rounded-lg w-fit h-fit py-5 px-10 backdrop-blur-lg shadow-black
+            shadow-2xl font-sans font-extralight">
+    <div id="weather" class="text-2xl"></div>
+</div>
