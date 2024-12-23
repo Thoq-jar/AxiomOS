@@ -3,4 +3,5 @@ Rails.application.routes.draw do
   root "application#index"
 
   post "/api/command", to: "api/commands#execute"
+  get "/api/geolocation", to: "api/geolocation#fetch"
 end

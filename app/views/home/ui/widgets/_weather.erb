@@ -2,7 +2,7 @@
 <script lang="js">
     function getWeather() {
         // Fetch the user's location data based on their IP address
-        fetch('http://ip-api.com/json')
+        fetch('/api/geolocation')
             .then(response => response.json())
             .then(data => {
                 const {lat, lon, city} = data;
