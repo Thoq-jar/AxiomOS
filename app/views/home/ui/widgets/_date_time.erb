@@ -1,6 +1,5 @@
 <script lang="js">
     const MILITARY_TIME = false;
-    const SHOW_YEAR = false;
 
     document.addEventListener('DOMContentLoaded', () => {
         setInterval(() => {
@@ -12,7 +11,8 @@
         const now = new Date();
         const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
         const useMilitaryTime = settings.militaryTime || false;
-        
+        const showYear = settings.showYear || false;
+
         let hours = now.getHours();
         let timeFormat = '';
         
@@ -45,7 +45,7 @@
         let baseDate = `${dayName}, ${monthName} ${currentDate}`;
 
         // Display
-        if (SHOW_YEAR) {
+        if (showYear) {
             baseDate += `, ${year}`;
         }
 
@@ -56,5 +56,5 @@
 
 <div class="p-10 rounded-lg backdrop-blur-lg shadow-black shadow-2xl font-sans font-extralight" data-widget="dateTime">
     <p class="text-5xl" id="time"></p>
-    <p class="text-2xl" id="date"></p>
+    <p class="text-xl" id="date"></p>
 </div>

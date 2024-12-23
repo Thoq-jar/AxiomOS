@@ -17,7 +17,15 @@ module Api
         "hostname" => [],
         "uname" => [ "-a" ],
         "uptime" => [],
-        "ps" => :any
+        "ps" => :any,
+        "man" => :any,
+        "cat" => :any,
+        "grep" => :any,
+        "neofetch" => [],
+        "screenfetch" => [],
+        "pfetch" => [],
+        "ping" => :any,
+        "help" => []
       }
 
       if allowed_commands.key?(base_cmd)

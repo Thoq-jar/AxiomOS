@@ -1,16 +1,277 @@
 <div class="flex flex-row mt-10 flex-wrap items-start content-start absolute z-10 p-10">
+    <!-- Settings Cog Button -->
+    <div class="absolute top-4 right-4">
+        <button onclick="toggleSettings()" 
+                class="text-white hover:text-gray-300 focus:outline-none" 
+                id="settings-cog">
+           <img src="/images/settings-cog.svg" alt="settings" class="w-6 h-6"/>
+        </button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 items-center 
+                                    justify-center z-50" 
+         style="display: none;">        
+        <div class="bg-transparent backdrop-blur-lg rounded-lg p-10 w-96">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-3xl text-white font-thin">AxiomOS Settings</h2>
+                <button onclick="toggleSettings()"
+                        class="text-white hover:text-gray-300 transition-all 
+                                 duration-100 text-2xl">
+                    &times;
+                </button>
+            </div>
+            
+            <div class="w-full border-b border-neutral-600 mb-6"></div>
+
+            <!-- Widget Toggles -->
+            <div class="space-y-6">
+                <!-- Widgets Section -->
+                <div>
+                    <h3 class="text-white text-2xl font-normal mb-3">Widgets</h3>
+                    <div class="space-y-4 border-b border-neutral-600 pb-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Date/Time Widget</span>
+                            <label class="switch">
+                                <input type="checkbox" id="datetime-toggle" checked onchange="toggleWidget('datetime')">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Weather Widget</span>
+                            <label class="switch">
+                                <input type="checkbox" id="weather-toggle" checked onchange="toggleWidget('weather')">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Search Bar Widget</span>
+                            <label class="switch">
+                                <input type="checkbox" id="searchbar-toggle" checked onchange="toggleWidget('searchbar')">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Shell Widget</span>
+                            <label class="switch">
+                                <input type="checkbox" id="shell-toggle" checked onchange="toggleWidget('shell')">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Date/Time Settings Section -->
+                <div>
+                    <h3 class="text-white text-2xl font-normal mb-3">Date & Time</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Military Time</span>
+                            <label class="switch">
+                                <input type="checkbox" id="military-time-toggle" onchange="toggleMilitaryTime()">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Show Year</span>
+                            <label class="switch">
+                                <input type="checkbox" id="show-year-toggle" onchange="toggleShowYear()">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="widgets" class="flex gap-5">
         <!-- (Left) Column Widgets -->
         <div class="flex flex-col gap-5">
-            <%= render "home/ui/widgets/date_time" %>
-            <%= render "home/ui/widgets/weather" %>
+            <div data-widget="datetime">
+                <%= render "home/ui/widgets/date_time" %>
+            </div>
+            <div data-widget="weather">
+                <%= render "home/ui/widgets/weather" %>
+            </div>
         </div>
 
         <!-- Row Column Widgets -->
         <div class="flex flex-col gap-5">
-            <%= render "home/ui/widgets/search_bar" %>
-            <%= render "home/ui/widgets/shell" %>
+            <div data-widget="searchbar">
+                <%= render "home/ui/widgets/search_bar" %>
+            </div>
+            <div data-widget="shell">
+                <%= render "home/ui/widgets/shell" %>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #2196F3;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+[data-widget] {
+    transition: all 0.3s ease-in-out;
+    transform-origin: top;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.widget-visible {
+    opacity: 1;
+    transform: scaleY(1);
+    visibility: visible;
+    max-height: 500px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.widget-hidden {
+    opacity: 0;
+    transform: scaleY(0);
+    visibility: hidden;
+    max-height: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+}
+</style>
+
+<script>
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleWidget(widgetName) {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const toggle = document.getElementById(`${widgetName}-toggle`);
+    settings[`${widgetName}Enabled`] = toggle.checked;
+    localStorage.setItem('axiomSettings', JSON.stringify(settings));
+    
+    const widgetElement = document.querySelector(`[data-widget="${widgetName}"]`);
+    if (!widgetElement) return;
+    
+    if (toggle.checked) {
+        widgetElement.classList.remove('widget-hidden');
+        widgetElement.classList.add('widget-visible');
+    } else {
+        widgetElement.classList.remove('widget-visible');
+        widgetElement.classList.add('widget-hidden');
+    }
+}
+
+function toggleMilitaryTime() {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const toggle = document.getElementById('military-time-toggle');
+    settings.militaryTime = toggle.checked;
+    localStorage.setItem('axiomSettings', JSON.stringify(settings));
+}
+
+function toggleShowYear() {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const toggle = document.getElementById('show-year-toggle');
+    settings.showYear = toggle.checked;
+    localStorage.setItem('axiomSettings', JSON.stringify(settings));
+}
+
+function handleOutsideClick(event) {
+    const modal = document.getElementById('settings-modal');
+    const modalContent = modal.querySelector('.bg-transparent');
+    
+    if (event.target !== modal) return;
+    closeSettings();
+}
+
+function closeSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = 'none';
+}
+
+
+// Load settings on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const settings = JSON.parse(localStorage.getItem('axiomSettings') || '{}');
+    const settingsModal = document.getElementById('settings-modal');
+
+    settingsModal.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', (event) => {
+        if (settingsModal.style.display === 'none') return;
+        if (event.key === 'Escape') {
+            closeSettings();
+        }
+    });
+
+    // Set toggle states
+    ['datetime', 'weather', 'searchbar', 'shell'].forEach(widget => {
+        const toggle = document.getElementById(`${widget}-toggle`);
+        if (!toggle) return;
+        toggle.checked = settings[`${widget}Enabled`] !== false;
+        toggleWidget(widget);
+    });
+    
+    // Set military time toggle
+    const militaryToggle = document.getElementById('military-time-toggle');
+    if (!militaryToggle) return;
+    militaryToggle.checked = settings.militaryTime || false;
+
+    // Set show year toggle
+    const showYearToggle = document.getElementById('show-year-toggle');
+    if (showYearToggle) {
+        showYearToggle.checked = settings.showYear || false;
+    }
+});
+</script>

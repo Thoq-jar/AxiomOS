@@ -5,7 +5,7 @@
         fetch('http://ip-api.com/json')
             .then(response => response.json())
             .then(data => {
-                const {lat, lon} = data;
+                const {lat, lon, city} = data;
 
                 // Fetch the current weather data using the latitude and longitude
                 fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
@@ -16,9 +16,10 @@
 
                         // Update the UI element with the weather data
                         document.getElementById('weather').innerHTML = `
-                            <p>Temp: ${weather.temperature}°C (${Math.round(fahrenheit)}°F)</p>
-                            <p>Wind: ${weather.windspeed} km/h</p>
-                            <p>Wind Direction: ${weather.winddirection}°</p>
+                            <p class="text-3xl mb-2">${city}</p>
+                            <p>Temp- ${weather.temperature}°C (${Math.round(fahrenheit)}°F)</p>
+                            <p>Speed- ${weather.windspeed} km/h</p>
+                            <p>Direction- ${weather.winddirection}°</p>
                         `;
                     }).catch(error => console.error('Error fetching weather data:', error));
             }).catch(error => console.error('Error fetching location data:', error));
