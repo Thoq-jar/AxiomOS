@@ -49,7 +49,11 @@ module Api
         return
 
         ## WONT BE CALLED ##
-        success, install_logs = send("install_#{app}")
+        if app == "pihole"
+          success, install_logs = send("install_#{app}")
+        else
+          puts "Unknown app: #{app}"
+        end
         logs.concat(install_logs) if install_logs
 
         if success
@@ -130,18 +134,18 @@ module Api
       if docker or docker_compose == false
         logs << "Docker or docker-compose not found, installing"
         docker_install = system("curl -sSL https://get.docker.com | sh", out: logs, err: logs)
-        return [false, logs] unless docker_install
+        return [ false, logs ] unless docker_install
 
         logs << "Setting up docker"
         docker_setup = system("sudo usermod -aG docker $USER", out: logs, err: logs)
-        return [false, logs] unless docker_setup
+        return [ false, logs ] unless docker_setup
       end
 
       logs << "Setting up Pi-hole"
       setup = system("sudo mkdir -p /opt/stacks/pihole", out: logs, err: logs)
-      return [false, logs] unless setup
+      return [ false, logs ] unless setup
 
-      [true, logs]
+      [ true, logs ]
     end
 
     def render_error(message, logs)
