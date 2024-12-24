@@ -98,8 +98,9 @@ function openAppStore() {
     .then(data => {
       Object.entries(data).forEach(([appName, info]) => {
         const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
-        if (!button && !info.status === 'active') return;
-        button.textContent = 'Uninstall';
+        if (!button || !button.innerText) return;
+        if (!info.status === 'active') return;
+        button.innerText = 'Uninstall';
         button.setAttribute('onclick', `uninstallApp('${appName}')`);
       });
     });
@@ -208,17 +209,27 @@ function installApp(appName) {
 
           // Update button to show Uninstall
           const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
-          button.textContent = 'Uninstall';
+          if (!button || !button.innerText) return;
+          button.innerText = 'Uninstall';
           button.onclick = () => uninstallApp(appName);
 
           alert(`Successfully installed ${appName}`);
           closeAppStore();
         });
+    } else {
+      console.error('Installation failed:', data.error);
+      console.log('Command logs:', data.logs);
+      alert(`Error installing ${appName}: ${data.error}\nCheck console for detailed logs.`);
     }
   })
   .catch(error => {
     console.error('Installation error:', error);
-    alert(`Error installing ${appName}: ${error.message}`);
+    if (error.message.includes('500')) {
+      console.log('Failed command:', error);
+      alert(`Installation failed with server error.\nCheck console for detailed logs.`);
+    } else {
+      alert(`Error installing ${appName}: ${error.message}`);
+    }
   });
 }
 
@@ -246,8 +257,8 @@ function uninstallApp(appName) {
 
       // Update app store button to show Install
       const button = document.querySelector(`button[onclick="uninstallApp('${appName}')"]`);
-      if (!button) return;
-      button.textContent = 'Install';
+      if (!button || !button.innerText) return;
+      button.innerText = 'Install';
       button.onclick = () => installApp(appName);
 
       alert(`Successfully uninstalled ${appName}`);
@@ -379,8 +390,9 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.entries(data).forEach(([appName, info]) => {
         const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
         if (!info) return;
+        if (!button) return;
         if (!button && !info.status === 'active') {
-          button.textContent = 'Uninstall';
+          button.text = 'Uninstall';
           button.onclick = () => uninstallApp(appName);
         }
       });
@@ -394,8 +406,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Object.entries(data).forEach(([appName, info]) => {
             const button = document.querySelector(`button[onclick="installApp('${appName}')"]`);
-            if (button && info.status === 'active') {
-                button.textContent = 'Uninstall';
+            if (!button || !button.innerText) return;
+            if (info.status === 'active') {
+                button.innerText = 'Uninstall';
                 button.setAttribute('onclick', `uninstallApp('${appName}')`);
             }
         });
