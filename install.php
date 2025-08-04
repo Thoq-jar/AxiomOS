@@ -25,6 +25,22 @@ function showAsciiArt(): void {
     \033[0m\n";
 }
 
+function showSpinner($message, $duration = 3): void {
+    $spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    $startTime = microtime(true);
+    $i = 0;
+
+    while ((microtime(true) - $startTime) < $duration) {
+        $spinner = $spinnerChars[$i % count($spinnerChars)];
+        echo "\r\033[38;5;208m$spinner $message\033[0m";
+        flush();
+        usleep(100000);
+        $i++;
+    }
+
+    echo "\r\033[38;5;214m✓ $message\033[0m\n";
+}
+
 function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
     system('clear');
     showAsciiArt();
@@ -136,10 +152,13 @@ function main(): void {
         exit(0);
     }
 
+    showSpinner("Loading components...", 1);
+
     $components = [
         "Web Dashboard",
         "Container Runtime (Docker)",
-        "Monitoring Stack (Grafana/Prometheus)",
+        "Monitoring Stack (Grafana)",
+        "Axiom Autostart (Start with server)",
     ];
 
     $selectedComponents = getUserSelection("Select Components to Install:", $components);
@@ -184,6 +203,10 @@ function main(): void {
 
     echo "\n\033[38;5;214mStarting Axiom Installation...\033[0m\n\n";
 
+    showSpinner("Preparing installation environment...", 1);
+    showSpinner("Downloading required packages...", 1);
+    showSpinner("Configuring services...", 1);
+
     for($i = 0; $i <= 100; $i += 5) {
         showProgress("Installing components", $i);
         usleep(200000);
@@ -198,4 +221,3 @@ function main(): void {
 if(php_sapi_name() === 'cli') {
     main();
 }
-
