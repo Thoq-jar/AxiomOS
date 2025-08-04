@@ -1842,7 +1842,7 @@
                             </span>
                     <span>
                                 Explore the
-                                <a href="/dashboard" target="_blank"
+                                <a href="/dashboard"
                                    class="inline-flex items-center space-x-1 font-medium underline underline-offset-4 text-[#f53003] dark:text-[#FF4433] ms-1">
                                     <span>Dashboard</span>
                                     <svg

@@ -1,0 +1,46 @@
+{
+    "portainer": {
+        "name": "Portainer",
+        "category": "management",
+        "featured": true,
+        "description": "Lightweight management UI for Docker",
+        "icon": "🐳",
+        "commands": [
+            "docker volume create portainer_data",
+            "docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest"
+        ]
+    },
+    "pihole": {
+        "name": "Pi-hole",
+        "category": "security",
+        "featured": true,
+        "description": "Network-wide ad blocker",
+        "icon": "🛡️",
+        "commands": [
+            "mkdir -p ~/pihole/etc-pihole ~/pihole/etc-dnsmasq.d",
+            "docker run -d --name pihole -p 53:53/tcp -p 53:53/udp -p 80:80 -e TZ=UTC -v ~/pihole/etc-pihole:/etc/pihole -v ~/pihole/etc-dnsmasq.d:/etc/dnsmasq.d --dns=127.0.0.1 --dns=1.1.1.1 --restart=unless-stopped --hostname pi.hole -e VIRTUAL_HOST=pi.hole -e PROXY_LOCATION=pi.hole -e ServerIP=127.0.0.1 pihole/pihole:latest"
+        ]
+    },
+    "nextcloud": {
+        "name": "Nextcloud",
+        "category": "storage",
+        "featured": false,
+        "description": "Self-hosted cloud storage",
+        "icon": "☁️",
+        "commands": [
+            "docker volume create nextcloud_data",
+            "docker run -d -p 8080:80 --name nextcloud -v nextcloud_data:/var/www/html --restart=always nextcloud:latest"
+        ]
+    },
+    "heimdall": {
+        "name": "Heimdall",
+        "category": "management",
+        "featured": true,
+        "description": "Application dashboard and launcher",
+        "icon": "🏠",
+        "commands": [
+            "mkdir -p ~/heimdall/config",
+            "docker run -d --name heimdall -e PUID=1000 -e PGID=1000 -e TZ=UTC -p 80:80 -p 443:443 -v ~/heimdall/config:/config --restart unless-stopped lscr.io/linuxserver/heimdall:latest"
+        ]
+    }
+}

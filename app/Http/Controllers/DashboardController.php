@@ -143,42 +143,41 @@ class DashboardController extends Controller {
 
     private function getWeatherDescription(int $weatherCode): string {
         $descriptions = [
-            0 => 'Clear sky',
-            1 => 'Mainly clear',
-            2 => 'Partly cloudy',
-            3 => 'Overcast',
-            45 => 'Fog',
-            48 => 'Depositing rime fog',
-            51 => 'Light drizzle',
-            53 => 'Moderate drizzle',
-            55 => 'Dense drizzle',
-            56 => 'Light freezing drizzle',
-            57 => 'Dense freezing drizzle',
-            61 => 'Slight rain',
-            63 => 'Moderate rain',
-            65 => 'Heavy rain',
-            66 => 'Light freezing rain',
-            67 => 'Heavy freezing rain',
-            71 => 'Slight snow fall',
-            73 => 'Moderate snow fall',
-            75 => 'Heavy snow fall',
-            77 => 'Snow grains',
-            80 => 'Slight rain showers',
-            81 => 'Moderate rain showers',
-            82 => 'Violent rain showers',
-            85 => 'Slight snow showers',
-            86 => 'Heavy snow showers',
-            95 => 'Thunderstorm',
-            96 => 'Thunderstorm with slight hail',
-            99 => 'Thunderstorm with heavy hail'
+            0 => 'Beautiful clear skies today!',
+            1 => 'Mostly clear with a hint of clouds',
+            2 => 'A mix of sun and fluffy clouds',
+            3 => 'Gloomy grey skies overhead',
+            45 => 'Spooky fog all around',
+            48 => 'Freezing fog coating everything',
+            51 => 'Just a sprinkle of rain',
+            53 => 'Steady drizzle falling',
+            55 => 'Heavy drizzle pouring down',
+            56 => 'Watch out for icy drizzle!',
+            57 => 'Thick freezing drizzle everywhere',
+            61 => 'Light rain to freshen things up',
+            63 => 'Steady rain falling',
+            65 => 'Pouring rain - grab an umbrella!',
+            66 => 'Careful - light freezing rain',
+            67 => 'Dangerous heavy freezing rain',
+            71 => 'Light snow falling gently',
+            73 => 'Steady snowfall coming down',
+            75 => 'Heavy snow blanketing everything',
+            77 => 'Tiny snow grains falling',
+            80 => 'Brief rain showers passing through',
+            81 => 'Steady rain showers ongoing',
+            82 => 'Intense rain coming down hard!',
+            85 => 'Light snow showers drifting down',
+            86 => 'Heavy snow showers piling up',
+            95 => 'Thunder and lightning - stay safe!',
+            96 => 'Thunderstorm with some hail mixed in',
+            99 => 'Severe thunderstorm with large hail!'
         ];
-
         return $descriptions[$weatherCode] ?? 'Unknown';
     }
 
     private function getCpuUsage(): float {
         $load = sys_getloadavg();
-        return round($load[0] * 10, 2);
+        return round($load[0] * 2, 2);
     }
 
     private function getMemoryUsage(): array {
@@ -299,21 +298,19 @@ class DashboardController extends Controller {
         return mt_rand(350, 650) / 10;
     }
 
-
     private function getGreeting(): string {
-        $hour = now()->hour;
+        $hour = shell_exec('date +%H') ?? '00';;
         $user = auth()->user();
         $username = $user ? ucfirst($user->name) : 'Guest';
 
         if($hour >= 5 && $hour < 12) {
-            return "Good Morning, {$username}";
+            return "Good Morning, $username";
         } elseif($hour >= 12 && $hour < 18) {
-            return "Good Afternoon, {$username}";
+            return "Good Afternoon, $username";
         } elseif($hour >= 18 && $hour < 21) {
-            return "Good Evening, {$username}";
+            return "Good Evening, $username";
         } else {
-            return "Good Night, {$username}";
+            return "Good Night, $username";
         }
     }
-
 }

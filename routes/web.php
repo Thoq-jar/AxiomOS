@@ -9,6 +9,7 @@ use Livewire\Volt\Volt;
 Route::get('/', function() {
     return view('welcome');
 })->name('home');
+
 Route::get('/appstore', [AppStoreController::class, 'index'])->name('appstore');
 
 Route::view('dashboard', 'dashboard')
@@ -34,12 +35,8 @@ Route::prefix('api')->group(function() {
 
     Route::get('/apps', [AppStoreController::class, 'getApps']);
     Route::get('/apps/featured', [AppStoreController::class, 'getFeaturedApps']);
-    Route::get('/apps/category/{category}', [AppStoreController::class, 'getAppsByCategory']);
-    Route::get('/apps/search', [AppStoreController::class, 'searchApps']);
-    Route::get('/apps/{id}', [AppStoreController::class, 'getApp']);
-    Route::post('/apps/{id}/install', [AppStoreController::class, 'installApp']);
-    Route::delete('/apps/{id}/uninstall', [AppStoreController::class, 'uninstallApp']);
-    Route::get('/apps/{id}/status', [AppStoreController::class, 'getInstallationStatus']);
+    Route::get('/apps/categories', [AppStoreController::class, 'getCategories']);
+    Route::post('/apps/{appId}/install', [AppStoreController::class, 'installApp']);
 
     Route::get('/logs', [LogsController::class, 'getLogs']);
     Route::delete('/logs', [LogsController::class, 'clearLogs']);

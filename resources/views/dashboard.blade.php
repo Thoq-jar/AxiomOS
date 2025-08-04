@@ -4,7 +4,7 @@
             <header class="mb-10">
                 <div class="text-center lg:text-left">
                     <h1 class="text-5xl lg:text-6xl font-bold mb-3 text-zinc-900 dark:text-white transition-colors duration-200" id="greeting">
-                        Good Morning
+                        Welcome
                     </h1>
                     <p class="text-lg text-zinc-600 dark:text-zinc-400 transition-colors duration-200" id="datetime"></p>
                 </div>
@@ -28,6 +28,21 @@
 
                 <div class="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-700">
                     <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200">CPU Temperature</h3>
+                        <div class="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 2a3 3 0 00-3 3v6.5a4.5 4.5 0 107 0V5a3 3 0 00-3-3zm-1 11.227A2 2 0 1011 13.227V8a1 1 0 10-2 0v5.227z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-zinc-900 dark:text-white mb-2" id="temperature">0°C</div>
+                    <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2">
+                        <div class="bg-orange-500 dark:bg-orange-400 h-2 rounded-full transition-all duration-300" id="temp-bar" style="width: 0"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-700">
+                    <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200">Memory Usage</h3>
                         <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
                             <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
@@ -39,21 +54,6 @@
                     <div class="text-sm text-zinc-500 dark:text-zinc-400 mb-2" id="memory-details">0 GB / 0 GB</div>
                     <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2">
                         <div class="bg-green-500 dark:bg-green-400 h-2 rounded-full transition-all duration-300" id="memory-bar" style="width: 0"></div>
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-zinc-200 dark:border-zinc-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200">Temperature</h3>
-                        <div class="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
-                            <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 2a3 3 0 00-3 3v6.5a4.5 4.5 0 107 0V5a3 3 0 00-3-3zm-1 11.227A2 2 0 1011 13.227V8a1 1 0 10-2 0v5.227z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="text-3xl font-bold text-zinc-900 dark:text-white mb-2" id="temperature">0°C</div>
-                    <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2">
-                        <div class="bg-orange-500 dark:bg-orange-400 h-2 rounded-full transition-all duration-300" id="temp-bar" style="width: 0"></div>
                     </div>
                 </div>
 
