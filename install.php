@@ -163,14 +163,6 @@ function main(): void {
 
     $selectedComponents = getUserSelection("Select Components to Install:", $components);
 
-    $environments = [
-        "Development",
-        "Production",
-        "Testing"
-    ];
-
-    $selectedEnv = getUserSelection("Select Environment:", $environments, false);
-
     $storageOptions = [
         "Local Storage (/opt/axiom)",
         "External Drive (/mnt/axiom)",
@@ -190,7 +182,6 @@ function main(): void {
         echo "  ● $components[$index]\n";
     }
 
-    echo "\n\033[38;5;208mEnvironment:\033[0m {$environments[$selectedEnv[0]]}\n";
     echo "\033[38;5;208mStorage:\033[0m {$storageOptions[$selectedStorage[0]]}\n\n";
 
     echo "Press ENTER to begin installation or Q to quit...\n";
