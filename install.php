@@ -207,17 +207,29 @@ function buildProject($projectPath): bool {
     $originalDir = getcwd();
     chdir($projectPath);
 
-    $buildCommands = [];
-    $buildCommands[] = 'composer install --no-interaction --prefer-dist --optimize-autoloader';
+    $buildCommands = [
+        'composer install --no-interaction --prefer-dist --optimize-autoloader',
+        'composer require doctrine/dbal --no-interaction',
+        'cp .env.example .env',
+        'php artisan key:generate --force',
+        'touch database/database.sqlite',
+        'php artisan migrate:fresh --force',
+        'php artisan session:table',
+        'php artisan migrate --force'
+    ];
 
     foreach($buildCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
         if($returnCode !== 0) {
-            chdir($originalDir);
-            echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
-            echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
-            return false;
+            if(!str_contains($command, 'session:table') && !str_contains($command, 'doctrine/dbal')) {
+                chdir($originalDir);
+                echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
+                echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
+                return false;
+            }
         }
+
+        $output = [];
     }
 
     chdir($originalDir);
