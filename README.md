@@ -18,7 +18,8 @@ macOS:
 
 ### Install Axiom
 ```shell
-curl -fsSL https://raw.githubusercontent.com/Thoq-jar/AxiomOS/refs/heads/main/install.php > /tmp/axiomup | php /tmp/axiomup
+curl -fsSL https://raw.githubusercontent.com/Thoq-jar/AxiomOS/refs/heads/main/install.php > /tmp/axiomup
+sudo php /tmp/axiomup
 ```
 
 # License
