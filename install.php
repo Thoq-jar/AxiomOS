@@ -1,6 +1,6 @@
 #!/usr/bin/env php
-<?php
 
+<?php
 function showAsciiArt(): void {
     echo "\033[38;5;208m";
     echo "
@@ -23,10 +23,6 @@ function showAsciiArt(): void {
                 @@@@@@@@@@@@@
                     @@@@@
     \033[0m\n";
-}
-
-function isTTY(): bool {
-    return posix_isatty(STDIN) && posix_isatty(STDOUT);
 }
 
 function executeCommand($command): bool {
@@ -53,18 +49,6 @@ function checkDependencies(): array {
 }
 
 function showSpinner($message, $callback = null): void {
-    if(!isTTY()) {
-        echo "$message...";
-        if($callback !== null) {
-            $result = $callback();
-            echo $result ? " ✓\n" : " ✗\n";
-        } else {
-            sleep(1);
-            echo " ✓\n";
-        }
-        return;
-    }
-
     $spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     $i = 0;
     $running = true;
@@ -104,12 +88,7 @@ function showSpinner($message, $callback = null): void {
 }
 
 function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
-    if(isTTY()) {
-        system('clear');
-    } else {
-        echo "\n" . str_repeat("=", 50) . "\n";
-    }
-
+    system('clear');
     showAsciiArt();
 
     echo "\033[38;5;214m$title\033[0m\n\n";
@@ -131,20 +110,12 @@ function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
         echo "$cursor$circle $color$options[$i]\033[0m\n";
     }
 
-    if(isTTY()) {
-        echo "\n\033[38;5;208m";
-        echo "Use SPACE to select/deselect, ENTER to confirm\n";
-        echo "Arrow keys to navigate, Q to quit\033[0m\n";
-    } else {
-        echo "\n\033[38;5;208mEnter numbers separated by spaces (e.g., 0 2), or 'all' for all options:\033[0m\n";
-    }
+    echo "\n\033[38;5;208m";
+    echo "Use SPACE to select/deselect, ENTER to confirm\n";
+    echo "Arrow keys to navigate, Q to quit\033[0m\n";
 }
 
 function getUserSelection($title, $options, $multiSelect = true) {
-    if(!isTTY()) {
-        return getNonInteractiveSelection($title, $options, $multiSelect);
-    }
-
     $selected = [];
     $currentIndex = 0;
 
@@ -188,44 +159,8 @@ function getUserSelection($title, $options, $multiSelect = true) {
     }
 }
 
-function getNonInteractiveSelection($title, $options, $multiSelect): array {
-    showMenu($title, $options);
-
-    for($i = 0; $i < count($options); $i++) {
-        echo "  $i) {$options[$i]}\n";
-    }
-
-    echo "\n\033[38;5;208m> \033[0m";
-    $input = trim(fgets(STDIN));
-
-    if($input === 'q' || $input === 'Q') {
-        echo "\033[38;5;208mInstallation cancelled.\033[0m\n";
-        exit(0);
-    }
-
-    if($input === 'all') {
-        return $multiSelect ? range(0, count($options) - 1) : [0];
-    }
-
-    $selections = array_map('intval', explode(' ', $input));
-    $selections = array_filter($selections, function($s) use ($options) {
-        return $s >= 0 && $s < count($options);
-    });
-
-    return $multiSelect ? array_values($selections) : [reset($selections) ?: 0];
-}
-
 function readKey(): false|string {
-    if(!isTTY()) {
-        return trim(fgets(STDIN));
-    }
-
-    $originalSettings = shell_exec('stty -g 2>/dev/null');
-    if($originalSettings === null) {
-        return trim(fgets(STDIN));
-    }
-
-    shell_exec('stty cbreak -echo 2>/dev/null');
+    system('stty cbreak -echo');
     $key = fgetc(STDIN);
 
     if($key === "\033") {
@@ -233,7 +168,7 @@ function readKey(): false|string {
         $key .= fgetc(STDIN);
     }
 
-    shell_exec("stty $originalSettings 2>/dev/null");
+    system('stty -cbreak echo');
     return $key;
 }
 
@@ -246,12 +181,8 @@ function showProgress($message, $current, $total): void {
     $bar = str_repeat("█", $filled) . str_repeat("░", $empty);
     $percentageText = number_format($percentage, 1);
 
-    if(isTTY()) {
-        echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
-        flush();
-    } else {
-        echo "$message [$percentageText%]\n";
-    }
+    echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
+    flush();
 }
 
 function cloneRepository($repoUrl, $targetPath): bool {
@@ -277,7 +208,20 @@ function buildProject($projectPath): bool {
     chdir($projectPath);
 
     $buildCommands = [];
-    $buildCommands[] = 'composer install';
+
+    if(file_exists('Makefile')) {
+        $buildCommands[] = 'make clean';
+        $buildCommands[] = 'make';
+    } elseif(file_exists('build.sh')) {
+        $buildCommands[] = 'chmod +x build.sh';
+        $buildCommands[] = './build.sh';
+    } elseif(file_exists('package.json')) {
+        $buildCommands[] = 'npm install';
+        $buildCommands[] = 'npm run build';
+    } else {
+        chdir($originalDir);
+        return false;
+    }
 
     foreach($buildCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
@@ -314,10 +258,10 @@ WantedBy=multi-user.target
         return false;
     }
 
-    exec('sudo systemctl daemon-reload', $output, $returnCode);
+    exec('systemctl daemon-reload', $output, $returnCode);
     if($returnCode !== 0) return false;
 
-    exec("sudo systemctl enable $serviceName", $output, $returnCode);
+    exec("systemctl enable $serviceName", $output, $returnCode);
 
     return $returnCode === 0;
 }
@@ -331,8 +275,8 @@ function installDependencies(): bool {
         $installCmd = 'yum install -y ' . implode(' ', $packages);
     } elseif(executeCommand('which pacman')) {
         $installCmd = 'pacman -S --noconfirm ' . implode(' ', $packages);
-    } elseif(executeCommand("which brew")) {
-        $installCmd = 'brew install' . implode(' ', $packages);
+    } elseif(executeCommand('which brew')) {
+        $installCmd = 'brew install ' . implode(' ', $packages);
     } else {
         return false;
     }
@@ -347,7 +291,9 @@ function getStoragePath($selectedStorage): string {
             return '/mnt/axiom-os';
         case 2:
             echo "\033[38;5;208mEnter custom path: \033[0m";
+            system('stty -cbreak echo');
             $customPath = trim(fgets(STDIN));
+            system('stty cbreak -echo');
             return $customPath ?: '/opt/axiom-os';
         default:
             return '/opt/axiom-os';
@@ -422,10 +368,7 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
 }
 
 function main(): void {
-    if(isTTY()) {
-        system('clear');
-    }
-
+    system('clear');
     showAsciiArt();
 
     echo "\033[38;5;214mWelcome to Axiom Homelab Server Installation\033[0m\n\n";
@@ -444,6 +387,8 @@ function main(): void {
 
     $components = [
         "Axiom Autostart (Start with server)",
+        "Container Runtime (Docker)",
+        "Monitoring Stack (Grafana)",
     ];
 
     $selectedComponents = getUserSelection("Select Components to Install:", $components);
@@ -459,12 +404,7 @@ function main(): void {
 
     $startWithServer = in_array(0, $selectedComponents);
 
-    if(isTTY()) {
-        system('clear');
-    } else {
-        echo "\n" . str_repeat("=", 50) . "\n";
-    }
-
+    system('clear');
     showAsciiArt();
 
     echo "\033[38;5;214mInstallation Configuration:\033[0m\n\n";
