@@ -242,7 +242,7 @@ cd $projectPath
 php axiom \$1
 ";
 
-    $scriptPath = "/usr/local/bin/axiom";
+    $scriptPath = "/usr/local/bin/axiomd";
 
     if(file_put_contents($scriptPath, $scriptContent) === false) {
         return false;
