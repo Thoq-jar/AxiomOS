@@ -211,24 +211,71 @@ function buildProject($projectPath): bool {
         'composer install --no-interaction --prefer-dist --optimize-autoloader',
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
-        'php artisan key:generate --force',
-        'touch database/database.sqlite',
-        'php artisan migrate:fresh --force',
-        'php artisan session:table',
-        'php artisan migrate --force'
+        'php artisan key:generate --force'
     ];
 
     foreach($buildCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
-        if($returnCode !== 0) {
-            if(!str_contains($command, 'session:table') && !str_contains($command, 'doctrine/dbal')) {
-                chdir($originalDir);
-                echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
-                echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
-                return false;
-            }
+        if($returnCode !== 0 && !strpos($command, 'doctrine/dbal')) {
+            chdir($originalDir);
+            echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
+            echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
+            return false;
         }
+        $output = [];
+    }
 
+    if(!file_exists('database/database.sqlite')) {
+        touch('database/database.sqlite');
+    }
+
+    $createUsersScript = <<<'PHP'
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        if (!Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('email')->nullable();
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('password');
+                $table->rememberToken();
+                $table->timestamps();
+            });
+        }
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('users');
+    }
+};
+PHP;
+
+    $timestamp = date('Y_m_d_His', time() - 10); // Earlier timestamp
+    $migrationFile = "database/migrations/{$timestamp}_create_users_table.php";
+    file_put_contents($migrationFile, "<?php\n\n" . $createUsersScript);
+
+    $migrationCommands = [
+        'php artisan migrate:fresh --force',
+        'php artisan session:table',
+        'php artisan migrate --force',
+        'php artisan config:clear',
+        'php artisan cache:clear'
+    ];
+
+    foreach($migrationCommands as $command) {
+        exec($command . ' 2>&1', $output, $returnCode);
+        if($returnCode !== 0 && !strpos($command, 'session:table')) {
+            chdir($originalDir);
+            echo "\n\033[38;5;196mMigration command failed: $command\033[0m\n";
+            echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
+            return false;
+        }
         $output = [];
     }
 
