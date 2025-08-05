@@ -25,24 +25,91 @@ function showAsciiArt(): void {
     \033[0m\n";
 }
 
-function showSpinner($message, $duration = 3): void {
-    $spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    $startTime = microtime(true);
-    $i = 0;
+function isTTY(): bool {
+    return posix_isatty(STDIN) && posix_isatty(STDOUT);
+}
 
-    while ((microtime(true) - $startTime) < $duration) {
-        $spinner = $spinnerChars[$i % count($spinnerChars)];
-        echo "\r\033[38;5;208m$spinner $message\033[0m";
-        flush();
-        usleep(100000);
-        $i++;
+function executeCommand($command): bool {
+    exec($command . ' 2>/dev/null', $output, $returnCode);
+    return $returnCode === 0;
+}
+
+function checkDependencies(): array {
+    $dependencies = [
+        'git' => ['name' => 'Git', 'required' => true]
+    ];
+
+    $results = [];
+    foreach($dependencies as $cmd => $info) {
+        $available = executeCommand("which $cmd");
+        $results[$cmd] = [
+            'name' => $info['name'],
+            'available' => $available,
+            'required' => $info['required']
+        ];
+    }
+
+    return $results;
+}
+
+function showSpinner($message, $callback = null): void {
+    if(!isTTY()) {
+        echo "$message...";
+        if($callback !== null) {
+            $result = $callback();
+            echo $result ? " ✓\n" : " ✗\n";
+        } else {
+            sleep(1);
+            echo " ✓\n";
+        }
+        return;
+    }
+
+    $spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    $i = 0;
+    $running = true;
+
+    if($callback === null) {
+        $startTime = microtime(true);
+        while ((microtime(true) - $startTime) < 3) {
+            $spinner = $spinnerChars[$i % count($spinnerChars)];
+            echo "\r\033[38;5;208m$spinner $message\033[0m";
+            flush();
+            usleep(100000);
+            $i++;
+        }
+    } else {
+        while($running) {
+            $spinner = $spinnerChars[$i % count($spinnerChars)];
+            echo "\r\033[38;5;208m$spinner $message\033[0m";
+            flush();
+
+            $result = $callback();
+            if($result !== null) {
+                $running = false;
+                if($result === true) {
+                    echo "\r\033[38;5;214m✓ $message\033[0m\n";
+                } else {
+                    echo "\r\033[38;5;196m✗ $message failed\033[0m\n";
+                }
+                return;
+            }
+
+            usleep(100000);
+            $i++;
+        }
     }
 
     echo "\r\033[38;5;214m✓ $message\033[0m\n";
 }
 
 function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
-    system('clear');
+    if(isTTY()) {
+        system('clear');
+    } else {
+        echo "\n" . str_repeat("=", 50) . "\n";
+    }
+
     showAsciiArt();
 
     echo "\033[38;5;214m$title\033[0m\n\n";
@@ -64,12 +131,20 @@ function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
         echo "$cursor$circle $color$options[$i]\033[0m\n";
     }
 
-    echo "\n\033[38;5;208m";
-    echo "Use SPACE to select/deselect, ENTER to confirm\n";
-    echo "Arrow keys to navigate, Q to quit\033[0m\n";
+    if(isTTY()) {
+        echo "\n\033[38;5;208m";
+        echo "Use SPACE to select/deselect, ENTER to confirm\n";
+        echo "Arrow keys to navigate, Q to quit\033[0m\n";
+    } else {
+        echo "\n\033[38;5;208mEnter numbers separated by spaces (e.g., 0 2), or 'all' for all options:\033[0m\n";
+    }
 }
 
 function getUserSelection($title, $options, $multiSelect = true) {
+    if(!isTTY()) {
+        return getNonInteractiveSelection($title, $options, $multiSelect);
+    }
+
     $selected = [];
     $currentIndex = 0;
 
@@ -113,8 +188,44 @@ function getUserSelection($title, $options, $multiSelect = true) {
     }
 }
 
+function getNonInteractiveSelection($title, $options, $multiSelect): array {
+    showMenu($title, $options);
+
+    for($i = 0; $i < count($options); $i++) {
+        echo "  $i) {$options[$i]}\n";
+    }
+
+    echo "\n\033[38;5;208m> \033[0m";
+    $input = trim(fgets(STDIN));
+
+    if($input === 'q' || $input === 'Q') {
+        echo "\033[38;5;208mInstallation cancelled.\033[0m\n";
+        exit(0);
+    }
+
+    if($input === 'all') {
+        return $multiSelect ? range(0, count($options) - 1) : [0];
+    }
+
+    $selections = array_map('intval', explode(' ', $input));
+    $selections = array_filter($selections, function($s) use ($options) {
+        return $s >= 0 && $s < count($options);
+    });
+
+    return $multiSelect ? array_values($selections) : [reset($selections) ?: 0];
+}
+
 function readKey(): false|string {
-    system('stty cbreak -echo');
+    if(!isTTY()) {
+        return trim(fgets(STDIN));
+    }
+
+    $originalSettings = shell_exec('stty -g 2>/dev/null');
+    if($originalSettings === null) {
+        return trim(fgets(STDIN));
+    }
+
+    shell_exec('stty cbreak -echo 2>/dev/null');
     $key = fgetc(STDIN);
 
     if($key === "\033") {
@@ -122,25 +233,199 @@ function readKey(): false|string {
         $key .= fgetc(STDIN);
     }
 
-    system('stty -cbreak echo');
+    shell_exec("stty $originalSettings 2>/dev/null");
     return $key;
 }
 
-function showProgress($message, $percentage): void {
+function showProgress($message, $current, $total): void {
     $barLength = 50;
+    $percentage = ($current / $total) * 100;
     $filled = intval($percentage * $barLength / 100);
     $empty = $barLength - $filled;
 
     $bar = str_repeat("█", $filled) . str_repeat("░", $empty);
+    $percentageText = number_format($percentage, 1);
 
-    echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentage%";
-    flush();
+    if(isTTY()) {
+        echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
+        flush();
+    } else {
+        echo "$message [$percentageText%]\n";
+    }
 }
 
-function install() {}
+function cloneRepository($repoUrl, $targetPath): bool {
+    if(!is_dir(dirname($targetPath))) {
+        mkdir(dirname($targetPath), 0755, true);
+    }
+
+    if(is_dir($targetPath)) {
+        exec("rm -rf $targetPath");
+    }
+
+    $command = "git clone $repoUrl $targetPath 2>&1";
+    $output = [];
+    $returnCode = 0;
+
+    exec($command, $output, $returnCode);
+
+    return $returnCode === 0;
+}
+
+function buildProject($projectPath): bool {
+    $originalDir = getcwd();
+    chdir($projectPath);
+
+    $buildCommands = [];
+    $buildCommands[] = 'composer install';
+
+    foreach($buildCommands as $command) {
+        exec($command . ' 2>&1', $output, $returnCode);
+        if($returnCode !== 0) {
+            chdir($originalDir);
+            return false;
+        }
+    }
+
+    chdir($originalDir);
+    return true;
+}
+
+function createStartupScript($projectPath, $serviceName): bool {
+    $serviceContent = "[Unit]
+Description=Axiom OS Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$projectPath
+ExecStart=php artisan serve
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+";
+
+    $servicePath = "/etc/systemd/system/$serviceName.service";
+
+    if(file_put_contents($servicePath, $serviceContent) === false) {
+        return false;
+    }
+
+    exec('sudo systemctl daemon-reload', $output, $returnCode);
+    if($returnCode !== 0) return false;
+
+    exec("sudo systemctl enable $serviceName", $output, $returnCode);
+
+    return $returnCode === 0;
+}
+
+function installDependencies(): bool {
+    $packages = ['git'];
+
+    if(executeCommand('which apt-get')) {
+        $installCmd = 'apt-get update && apt-get install -y ' . implode(' ', $packages);
+    } elseif(executeCommand('which yum')) {
+        $installCmd = 'yum install -y ' . implode(' ', $packages);
+    } elseif(executeCommand('which pacman')) {
+        $installCmd = 'pacman -S --noconfirm ' . implode(' ', $packages);
+    } elseif(executeCommand("which brew")) {
+        $installCmd = 'brew install' . implode(' ', $packages);
+    } else {
+        return false;
+    }
+
+    exec($installCmd . ' 2>/dev/null', $output, $returnCode);
+    return $returnCode === 0;
+}
+
+function getStoragePath($selectedStorage): string {
+    switch($selectedStorage[0]) {
+        case 1:
+            return '/mnt/axiom-os';
+        case 2:
+            echo "\033[38;5;208mEnter custom path: \033[0m";
+            $customPath = trim(fgets(STDIN));
+            return $customPath ?: '/opt/axiom-os';
+        default:
+            return '/opt/axiom-os';
+    }
+}
+
+/** @noinspection PhpUnusedParameterInspection */
+function install($selectedComponents, $storagePath, $startWithServer): bool {
+    $repoUrl = 'https://github.com/thoq-jar/axiom-os.git';
+    $serviceName = 'axiom-os';
+
+    $tasks = [
+        'Checking system dependencies',
+        'Installing missing dependencies',
+        'Cloning repository',
+        'Building project',
+        'Creating startup script',
+        'Finalizing installation'
+    ];
+
+    $totalTasks = count($tasks);
+
+    echo "\n\033[38;5;214mStarting Axiom Installation...\033[0m\n\n";
+
+    showProgress($tasks[0], 1, $totalTasks);
+    $deps = checkDependencies();
+    $missingRequired = array_filter($deps, function($dep) {
+        return $dep['required'] && !$dep['available'];
+    });
+
+    if(!empty($missingRequired)) {
+        echo "\n\033[38;5;196mMissing required dependencies:\033[0m\n";
+        foreach($missingRequired as $info) {
+            echo "  ✗ {$info['name']}\n";
+        }
+
+        showProgress($tasks[1], 2, $totalTasks);
+        if(!installDependencies()) {
+            echo "\n\033[38;5;196mFailed to install dependencies\033[0m\n";
+            return false;
+        }
+    }
+
+    showProgress($tasks[2], 3, $totalTasks);
+    if(!cloneRepository($repoUrl, $storagePath)) {
+        echo "\n\033[38;5;196mFailed to clone repository\033[0m\n";
+        return false;
+    }
+
+    showProgress($tasks[3], 4, $totalTasks);
+    if(!buildProject($storagePath)) {
+        echo "\n\033[38;5;196mFailed to build project\033[0m\n";
+        return false;
+    }
+
+    showProgress($tasks[4], 5, $totalTasks);
+    if(!createStartupScript($storagePath, $serviceName)) {
+        echo "\n\033[38;5;196mFailed to create startup script\033[0m\n";
+        return false;
+    }
+
+    if($startWithServer) {
+        exec("systemctl start $serviceName", $output, $returnCode);
+        if($returnCode !== 0) {
+            echo "\n\033[38;5;196mWarning: Failed to start service\033[0m\n";
+        }
+    }
+
+    showProgress($tasks[5], 6, $totalTasks);
+
+    return true;
+}
 
 function main(): void {
-    system('clear');
+    if(isTTY()) {
+        system('clear');
+    }
+
     showAsciiArt();
 
     echo "\033[38;5;214mWelcome to Axiom Homelab Server Installation\033[0m\n\n";
@@ -152,27 +437,34 @@ function main(): void {
         exit(0);
     }
 
-    showSpinner("Loading components...", 1);
+    showSpinner("Loading components...", function() {
+        usleep(1000000);
+        return true;
+    });
 
     $components = [
-        "Web Dashboard",
-        "Container Runtime (Docker)",
-        "Monitoring Stack (Grafana)",
         "Axiom Autostart (Start with server)",
     ];
 
     $selectedComponents = getUserSelection("Select Components to Install:", $components);
 
     $storageOptions = [
-        "Local Storage (/opt/axiom)",
-        "External Drive (/mnt/axiom)",
-        "Network Storage (NFS)",
+        "Local Storage (/opt/axiom-os)",
+        "External Drive (/mnt/axiom-os)",
         "Custom Path"
     ];
 
     $selectedStorage = getUserSelection("Select Storage Location:", $storageOptions, false);
+    $storagePath = getStoragePath($selectedStorage);
 
-    system('clear');
+    $startWithServer = in_array(0, $selectedComponents);
+
+    if(isTTY()) {
+        system('clear');
+    } else {
+        echo "\n" . str_repeat("=", 50) . "\n";
+    }
+
     showAsciiArt();
 
     echo "\033[38;5;214mInstallation Configuration:\033[0m\n\n";
@@ -182,7 +474,8 @@ function main(): void {
         echo "  ● $components[$index]\n";
     }
 
-    echo "\033[38;5;208mStorage:\033[0m {$storageOptions[$selectedStorage[0]]}\n\n";
+    echo "\033[38;5;208mStorage:\033[0m $storagePath\n";
+    echo "\033[38;5;208mStart with server:\033[0m " . ($startWithServer ? 'Yes' : 'No') . "\n\n";
 
     echo "Press ENTER to begin installation or Q to quit...\n";
 
@@ -192,21 +485,18 @@ function main(): void {
         exit(0);
     }
 
-    echo "\n\033[38;5;214mStarting Axiom Installation...\033[0m\n\n";
+    $success = install($selectedComponents, $storagePath, $startWithServer);
 
-    showSpinner("Preparing installation environment...", 1);
-    showSpinner("Downloading required packages...", 1);
-    showSpinner("Configuring services...", 1);
-
-    for($i = 0; $i <= 100; $i += 5) {
-        showProgress("Installing components", $i);
-        usleep(200000);
+    if($success) {
+        echo "\n\n\033[38;5;214m✓ Installation completed successfully!\033[0m\n";
+        echo "\033[38;5;208mAxiom Homelab Server is now ready.\033[0m\n";
+        if($startWithServer) {
+            echo "\033[38;5;208mService started and enabled for boot.\033[0m\n";
+        }
+    } else {
+        echo "\n\n\033[38;5;196m✗ Installation failed!\033[0m\n";
+        echo "\033[38;5;208mPlease check the errors above and try again.\033[0m\n";
     }
-
-    echo "\n\n\033[38;5;214m✓ Installation completed successfully!\033[0m\n";
-    echo "\033[38;5;208mAxiom Homelab Server is now ready.\033[0m\n\n";
-
-    install();
 }
 
 if(php_sapi_name() === 'cli') {
