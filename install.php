@@ -181,7 +181,7 @@ function showProgress($message, $current, $total): void {
     $bar = str_repeat("█", $filled) . str_repeat("░", $empty);
     $percentageText = number_format($percentage, 1);
 
-    echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
+    echo "\r\033[2K\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
     flush();
 }
 
@@ -208,20 +208,8 @@ function buildProject($projectPath): bool {
     chdir($projectPath);
 
     $buildCommands = [];
+    $buildCommands[] = 'composer install';
 
-    if(file_exists('Makefile')) {
-        $buildCommands[] = 'make clean';
-        $buildCommands[] = 'make';
-    } elseif(file_exists('build.sh')) {
-        $buildCommands[] = 'chmod +x build.sh';
-        $buildCommands[] = './build.sh';
-    } elseif(file_exists('package.json')) {
-        $buildCommands[] = 'npm install';
-        $buildCommands[] = 'npm run build';
-    } else {
-        chdir($originalDir);
-        return false;
-    }
 
     foreach($buildCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
