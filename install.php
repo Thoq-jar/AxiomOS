@@ -25,10 +25,6 @@ function showAsciiArt(): void {
     \033[0m\n";
 }
 
-function isTTY(): bool {
-    return posix_isatty(STDIN) && posix_isatty(STDOUT);
-}
-
 function executeCommand($command): bool {
     exec($command . ' 2>/dev/null', $output, $returnCode);
     return $returnCode === 0;
@@ -53,25 +49,13 @@ function checkDependencies(): array {
 }
 
 function showSpinner($message, $callback = null): void {
-    if(!isTTY()) {
-        echo "$message...";
-        if($callback !== null) {
-            $result = $callback();
-            echo $result ? " ✓\n" : " ✗\n";
-        } else {
-            sleep(1);
-            echo " ✓\n";
-        }
-        return;
-    }
-
     $spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     $i = 0;
     $running = true;
 
     if($callback === null) {
         $startTime = microtime(true);
-        while ((microtime(true) - $startTime) < 3) {
+        while((microtime(true) - $startTime) < 3) {
             $spinner = $spinnerChars[$i % count($spinnerChars)];
             echo "\r\033[38;5;208m$spinner $message\033[0m";
             flush();
@@ -104,12 +88,7 @@ function showSpinner($message, $callback = null): void {
 }
 
 function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
-    if(isTTY()) {
-        system('clear');
-    } else {
-        echo "\n" . str_repeat("=", 50) . "\n";
-    }
-
+    system('clear');
     showAsciiArt();
 
     echo "\033[38;5;214m$title\033[0m\n\n";
@@ -131,20 +110,12 @@ function showMenu($title, $options, $selected = [], $currentIndex = 0): void {
         echo "$cursor$circle $color$options[$i]\033[0m\n";
     }
 
-    if(isTTY()) {
-        echo "\n\033[38;5;208m";
-        echo "Use SPACE to select/deselect, ENTER to confirm\n";
-        echo "Arrow keys to navigate, Q to quit\033[0m\n";
-    } else {
-        echo "\n\033[38;5;208mEnter numbers separated by spaces (e.g., 0 2), or 'all' for all options:\033[0m\n";
-    }
+    echo "\n\033[38;5;208m";
+    echo "Use SPACE to select/deselect, ENTER to confirm\n";
+    echo "Arrow keys to navigate, Q to quit\033[0m\n";
 }
 
 function getUserSelection($title, $options, $multiSelect = true) {
-    if(!isTTY()) {
-        return getNonInteractiveSelection($title, $options, $multiSelect);
-    }
-
     $selected = [];
     $currentIndex = 0;
 
@@ -188,38 +159,7 @@ function getUserSelection($title, $options, $multiSelect = true) {
     }
 }
 
-function getNonInteractiveSelection($title, $options, $multiSelect): array {
-    showMenu($title, $options);
-
-    for($i = 0; $i < count($options); $i++) {
-        echo "  $i) {$options[$i]}\n";
-    }
-
-    echo "\n\033[38;5;208m> \033[0m";
-    $input = trim(fgets(STDIN));
-
-    if($input === 'q' || $input === 'Q') {
-        echo "\033[38;5;208mInstallation cancelled.\033[0m\n";
-        exit(0);
-    }
-
-    if($input === 'all') {
-        return $multiSelect ? range(0, count($options) - 1) : [0];
-    }
-
-    $selections = array_map('intval', explode(' ', $input));
-    $selections = array_filter($selections, function($s) use ($options) {
-        return $s >= 0 && $s < count($options);
-    });
-
-    return $multiSelect ? array_values($selections) : [reset($selections) ?: 0];
-}
-
 function readKey(): false|string {
-    if(!isTTY()) {
-        return trim(fgets(STDIN));
-    }
-
     $originalSettings = shell_exec('stty -g 2>/dev/null');
     if($originalSettings === null) {
         return trim(fgets(STDIN));
@@ -246,12 +186,8 @@ function showProgress($message, $current, $total): void {
     $bar = str_repeat("█", $filled) . str_repeat("░", $empty);
     $percentageText = number_format($percentage, 1);
 
-    if(isTTY()) {
-        echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
-        flush();
-    } else {
-        echo "$message [$percentageText%]\n";
-    }
+    echo "\r\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
+    flush();
 }
 
 function cloneRepository($repoUrl, $targetPath): bool {
@@ -315,7 +251,8 @@ WantedBy=multi-user.target
     }
 
     exec('sudo systemctl daemon-reload', $output, $returnCode);
-    if($returnCode !== 0) return false;
+    if($returnCode !== 0)
+        return false;
 
     exec("sudo systemctl enable $serviceName", $output, $returnCode);
 
@@ -422,10 +359,7 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
 }
 
 function main(): void {
-    if(isTTY()) {
-        system('clear');
-    }
-
+    system('clear');
     showAsciiArt();
 
     echo "\033[38;5;214mWelcome to Axiom Homelab Server Installation\033[0m\n\n";
@@ -459,11 +393,7 @@ function main(): void {
 
     $startWithServer = in_array(0, $selectedComponents);
 
-    if(isTTY()) {
-        system('clear');
-    } else {
-        echo "\n" . str_repeat("=", 50) . "\n";
-    }
+    system('clear');
 
     showAsciiArt();
 
