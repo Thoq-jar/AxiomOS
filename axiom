@@ -1,0 +1,144 @@
+<?php
+
+class AxiomServer {
+    private $pidFile;
+    private $logFile;
+    private $scriptDir;
+
+    public function __construct() {
+        $this->scriptDir = __DIR__;
+        $this->pidFile = $this->scriptDir . '/axiom.pid';
+        $this->logFile = $this->scriptDir . '/axiom.log';
+    }
+
+    public function up() {
+        if($this->isRunning()) {
+            echo "Axiom server is already running (PID: " . $this->getPid() . ")\n";
+            return;
+        }
+
+        echo "Starting Axiom server...\n";
+
+        chdir($this->scriptDir);
+
+        $command = sprintf(
+            'nohup php artisan serve > %s 2>&1 & echo $! > %s',
+            escapeshellarg($this->logFile),
+            escapeshellarg($this->pidFile)
+        );
+
+        shell_exec($command);
+
+        sleep(2);
+
+        if($this->isRunning()) {
+            echo "Axiom server started successfully on http://127.0.0.1:8000\n";
+            echo "PID: " . $this->getPid() . "\n";
+            echo "Logs: " . $this->logFile . "\n";
+        } else {
+            echo "Failed to start Axiom server. Check logs: " . $this->logFile . "\n";
+        }
+    }
+
+    public function down(): void {
+        if(!$this->isRunning()) {
+            echo "Axiom server is not running\n";
+            $this->cleanup();
+            return;
+        }
+
+        $pid = $this->getPid();
+        echo "Stopping Axiom server (PID: $pid)...\n";
+
+        shell_exec("kill $pid");
+
+        sleep(2);
+
+        if($this->isRunning()) {
+            shell_exec("kill -9 $pid");
+            sleep(1);
+        }
+
+        if(!$this->isRunning()) {
+            echo "Axiom server stopped successfully\n";
+            $this->cleanup();
+        } else {
+            echo "Failed to stop Axiom server\n";
+        }
+    }
+
+    public function status() {
+        if($this->isRunning()) {
+            echo "Axiom server is running (PID: " . $this->getPid() . ")\n";
+            echo "Server URL: http://127.0.0.1:8000\n";
+            echo "Logs: " . $this->logFile . "\n";
+        } else {
+            echo "Axiom server is not running\n";
+        }
+    }
+
+    public function logs() {
+        if(file_exists($this->logFile)) {
+            echo "=== Axiom Server Logs ===\n";
+            echo file_get_contents($this->logFile);
+        } else {
+            echo "No logs found\n";
+        }
+    }
+
+    private function isRunning(): bool {
+        $pid = $this->getPid();
+        if(!$pid) {
+            return false;
+        }
+
+        $result = shell_exec("ps -p $pid");
+        return str_contains($result, $pid);
+    }
+
+    private function getPid() {
+        if(!file_exists($this->pidFile)) {
+            return null;
+        }
+
+        $pid = trim(file_get_contents($this->pidFile));
+        return $pid ? (int)$pid : null;
+    }
+
+    private function cleanup(): void {
+        if(file_exists($this->pidFile)) {
+            unlink($this->pidFile);
+        }
+    }
+}
+
+if($argc < 2) {
+    echo "Usage: php axiom.php [up|down|status|logs]\n";
+    echo "  up     - Start the Axiom server in background\n";
+    echo "  down   - Stop the Axiom server\n";
+    echo "  status - Check server status\n";
+    echo "  logs   - Show server logs\n";
+    exit(1);
+}
+
+$server = new AxiomServer();
+$command = $argv[1];
+
+switch($command) {
+    case 'up':
+        $server->up();
+        break;
+    case 'down':
+        $server->down();
+        break;
+    case 'status':
+        $server->status();
+        break;
+    case 'logs':
+        $server->logs();
+        break;
+    default:
+        echo "Unknown command: $command\n";
+        echo "Available commands: up, down, status, logs\n";
+        exit(1);
+}

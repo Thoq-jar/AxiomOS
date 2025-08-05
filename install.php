@@ -208,18 +208,36 @@ function buildProject($projectPath): bool {
     chdir($projectPath);
 
     $buildCommands = [];
-    $buildCommands[] = 'composer install';
-
+    $buildCommands[] = 'composer install --no-interaction --prefer-dist --optimize-autoloader';
 
     foreach($buildCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
         if($returnCode !== 0) {
             chdir($originalDir);
+            echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
+            echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
             return false;
         }
     }
 
     chdir($originalDir);
+    return true;
+}
+
+function createLaunchScript($projectPath): bool {
+    $scriptContent = "#!/bin/bash
+cd $projectPath
+php axiom \$1
+";
+
+    $scriptPath = "/usr/local/bin/axiom";
+
+    if(file_put_contents($scriptPath, $scriptContent) === false) {
+        return false;
+    }
+
+    chmod($scriptPath, 0755);
+
     return true;
 }
 
@@ -232,7 +250,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$projectPath
-ExecStart=php artisan serve
+ExecStart=/usr/local/bin/axiom-os
 Restart=always
 RestartSec=10
 
@@ -298,9 +316,14 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
         'Installing missing dependencies',
         'Cloning repository',
         'Building project',
-        'Creating startup script',
-        'Finalizing installation'
+        'Creating launch script'
     ];
+
+    if($startWithServer) {
+        $tasks[] = 'Creating startup script';
+    }
+
+    $tasks[] = 'Finalizing installation';
 
     $totalTasks = count($tasks);
 
@@ -338,19 +361,28 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
     }
 
     showProgress($tasks[4], 5, $totalTasks);
-    if(!createStartupScript($storagePath, $serviceName)) {
-        echo "\n\033[38;5;196mFailed to create startup script\033[0m\n";
+    if(!createLaunchScript($storagePath)) {
+        echo "\n\033[38;5;196mFailed to create launch script\033[0m\n";
         return false;
     }
 
+    $currentTask = 6;
+
     if($startWithServer) {
+        showProgress($tasks[5], $currentTask, $totalTasks);
+        if(!createStartupScript($storagePath, $serviceName)) {
+            echo "\n\033[38;5;196mFailed to create startup script\033[0m\n";
+            return false;
+        }
+
         exec("systemctl start $serviceName", $output, $returnCode);
         if($returnCode !== 0) {
             echo "\n\033[38;5;196mWarning: Failed to start service\033[0m\n";
         }
+        $currentTask++;
     }
 
-    showProgress($tasks[5], 6, $totalTasks);
+    showProgress($tasks[count($tasks) - 1], $currentTask, $totalTasks);
 
     return true;
 }
