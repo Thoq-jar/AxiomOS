@@ -207,19 +207,32 @@ function buildProject($projectPath): bool {
     $originalDir = getcwd();
     chdir($projectPath);
     
-    // npm wont work without this i have no idea why
-    $npmPath = trim(shell_exec('which npm 2>/dev/null') ?: '');
+    $homeDir = getenv('HOME') ?: '/home/' . get_current_user();
+    
+    $nvmPath = "$homeDir/.nvm/nvm.sh";
+    if (file_exists($nvmPath)) {
+        $npmPath = trim(shell_exec("bash -c 'source $nvmPath && which npm 2>/dev/null'") ?: '');
+    } else {
+        $npmPath = trim(shell_exec('which npm 2>/dev/null') ?: '');
+    }
     
     if (empty($npmPath)) {
-        $homeDir = getenv('HOME') ?: '/home/' . get_current_user();
         $possibleNpmPaths = [
             "$homeDir/.nvm/versions/node/v22.18.0/bin/npm",
             "$homeDir/.nvm/current/bin/npm",
+            "$homeDir/.nvm/versions/node/*/bin/npm",
             "/usr/local/bin/npm",
             "/usr/bin/npm"
         ];
         
         foreach ($possibleNpmPaths as $path) {
+            if ($path === "$homeDir/.nvm/versions/node/*/bin/npm") {
+                $globPaths = glob($path);
+                if (!empty($globPaths)) {
+                    $path = $globPaths[0];
+                }
+            }
+            
             if (file_exists($path) && is_executable($path)) {
                 $npmPath = $path;
                 break;
@@ -229,14 +242,23 @@ function buildProject($projectPath): bool {
     
     if (empty($npmPath)) {
         echo "\n\033[38;5;196mError: npm not found. Please ensure Node.js and npm are properly installed.\033[0m\n";
+        echo "Searched paths:\n";
+        echo "- which npm: " . trim(shell_exec('which npm 2>/dev/null') ?: 'not found') . "\n";
+        echo "- $homeDir/.nvm/versions/node/v22.18.0/bin/npm\n";
+        echo "- $homeDir/.nvm/current/bin/npm\n";
         chdir($originalDir);
         return false;
     }
     
+    echo "Using npm at: $npmPath\n";
+    
+    $nodePath = dirname($npmPath);
+    $envPrefix = "PATH=\"$nodePath:\$PATH\"";
+    
     $buildCommands = [
         'composer install --no-interaction --prefer-dist --optimize-autoloader',
-        "$npmPath install",
-        "$npmPath run build",
+        "$envPrefix $npmPath install",
+        "$envPrefix $npmPath run build",
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
         'php artisan key:generate --force',
@@ -341,7 +363,6 @@ PHP;
     chdir($originalDir);
     return true;
 }
-
 
 function createLaunchScript($projectPath): bool {
     $scriptContent = "#!/bin/bash
