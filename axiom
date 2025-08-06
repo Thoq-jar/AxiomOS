@@ -22,7 +22,7 @@ class AxiomServer {
         chdir($this->scriptDir);
 
         $command = sprintf(
-            'nohup php artisan serve > %s 2>&1 & echo $! > %s',
+            'nohup php artisan serve --port 9595 --host 0.0.0.0 > %s 2>&1 & echo $! > %s',
             escapeshellarg($this->logFile),
             escapeshellarg($this->pidFile)
         );
@@ -32,7 +32,7 @@ class AxiomServer {
         sleep(2);
 
         if($this->isRunning()) {
-            echo "Axiom server started successfully on http://127.0.0.1:8000\n";
+            echo "Axiom server started successfully on http://0.0.0.0:9595\n";
             echo "PID: " . $this->getPid() . "\n";
             echo "Logs: " . $this->logFile . "\n";
         } else {
