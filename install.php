@@ -203,62 +203,57 @@ function cloneRepository($repoUrl, $targetPath): bool {
     return $returnCode === 0;
 }
 
+// npm is pissing me off
 function buildProject($projectPath): bool {
     $originalDir = getcwd();
     chdir($projectPath);
-    
-    $homeDir = getenv('HOME') ?: '/home/' . get_current_user();
-    
-    $nvmPath = "$homeDir/.nvm/nvm.sh";
-    if (file_exists($nvmPath)) {
-        $npmPath = trim(shell_exec("bash -c 'source $nvmPath && which npm 2>/dev/null'") ?: '');
-    } else {
-        $npmPath = trim(shell_exec('which npm 2>/dev/null') ?: '');
-    }
-    
-    if (empty($npmPath)) {
-        $possibleNpmPaths = [
-            "$homeDir/.nvm/versions/node/v22.18.0/bin/npm",
-            "$homeDir/.nvm/current/bin/npm",
-            "$homeDir/.nvm/versions/node/*/bin/npm",
-            "/usr/local/bin/npm",
-            "/usr/bin/npm"
-        ];
         
-        foreach ($possibleNpmPaths as $path) {
-            if ($path === "$homeDir/.nvm/versions/node/*/bin/npm") {
-                $globPaths = glob($path);
-                if (!empty($globPaths)) {
-                    $path = $globPaths[0];
-                }
-            }
-            
-            if (file_exists($path) && is_executable($path)) {
-                $npmPath = $path;
-                break;
-            }
-        }
-    }
+    $npmScriptPath = tempnam(sys_get_temp_dir(), 'npm_build_') . '.sh';
     
-    if (empty($npmPath)) {
-        echo "\n\033[38;5;196mError: npm not found. Please ensure Node.js and npm are properly installed.\033[0m\n";
-        echo "Searched paths:\n";
-        echo "- which npm: " . trim(shell_exec('which npm 2>/dev/null') ?: 'not found') . "\n";
-        echo "- $homeDir/.nvm/versions/node/v22.18.0/bin/npm\n";
-        echo "- $homeDir/.nvm/current/bin/npm\n";
+    $npmScript = <<<'BASH'
+#!/bin/bash
+set -e
+
+if [ -f "$HOME/.nvm/nvm.sh" ]; then
+    source "$HOME/.nvm/nvm.sh"
+    nvm use default 2>/dev/null || nvm use node 2>/dev/null || true
+fi
+
+cd "$1"
+
+npm install
+npm run build
+BASH;
+    
+    file_put_contents($npmScriptPath, $npmScript);
+    chmod($npmScriptPath, 0755);
+    
+    echo "Executing: composer install --no-interaction --prefer-dist --optimize-autoloader\n";
+    exec('composer install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $returnCode);
+    
+    if($returnCode !== 0) {
+        unlink($npmScriptPath);
         chdir($originalDir);
+        echo "\n\033[38;5;196mComposer install failed\033[0m\n";
+        echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
         return false;
     }
+    $output = [];
     
-    echo "Using npm at: $npmPath\n";
+    echo "Executing npm operations via script...\n";
+    exec("bash \"$npmScriptPath\" \"" . escapeshellarg(getcwd()) . "\" 2>&1", $output, $returnCode);
     
-    $nodePath = dirname($npmPath);
-    $envPrefix = "PATH=\"$nodePath:\$PATH\"";
+    unlink($npmScriptPath);
+    
+    if($returnCode !== 0) {
+        chdir($originalDir);
+        echo "\n\033[38;5;196mnpm operations failed\033[0m\n";
+        echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
+        return false;
+    }
+    $output = [];
     
     $buildCommands = [
-        'composer install --no-interaction --prefer-dist --optimize-autoloader',
-        "$envPrefix $npmPath install",
-        "$envPrefix $npmPath run build",
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
         'php artisan key:generate --force',
