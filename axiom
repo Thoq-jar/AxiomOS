@@ -39,8 +39,8 @@ class AxiomServer
             $localIP = shell_exec("hostname -I | awk '{print $1}'") ?: 'localhost';
             $localIP = trim($localIP);
 
-            echo "Axiom ● server started successfully on http://" . $localIP . ":9595\n";
-            echo "  ▸ Network";
+            echo "● Axiom server started successfully on http://" . $localIP . ":9595\n";
+            echo "  ▸ Network\n";
             echo "      ▸ Hostname: " . $hostname . "\n";
             echo "      ▸ Local IP: http://" . $localIP . ":9595\n";
             echo "  ▸ Proc Info: " . $this->getPid() . "\n";
