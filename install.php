@@ -203,64 +203,20 @@ function cloneRepository($repoUrl, $targetPath): bool {
     return $returnCode === 0;
 }
 
-// npm is pissing me off
 function buildProject($projectPath): bool {
     $originalDir = getcwd();
     chdir($projectPath);
-        
-    $npmScriptPath = tempnam(sys_get_temp_dir(), 'npm_build_') . '.sh';
-    
-    $npmScript = <<<'BASH'
-#!/bin/bash
-set -e
 
-if [ -f "$HOME/.nvm/nvm.sh" ]; then
-    source "$HOME/.nvm/nvm.sh"
-    nvm use default 2>/dev/null || nvm use node 2>/dev/null || true
-fi
-
-cd "$1"
-
-npm install
-npm run build
-BASH;
-    
-    file_put_contents($npmScriptPath, $npmScript);
-    chmod($npmScriptPath, 0755);
-    
-    exec('composer install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $returnCode);
-    
-    if($returnCode !== 0) {
-        unlink($npmScriptPath);
-        chdir($originalDir);
-        echo "\n\033[38;5;196mComposer install failed\033[0m\n";
-        echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
-        return false;
-    }
-    $output = [];
-    
-    chdir($projectPath);
-    exec("bash \"$npmScriptPath\" \"" . escapeshellarg(getcwd()) . "\" 2>&1", $output, $returnCode);
-    
-    unlink($npmScriptPath);
-    
-    if($returnCode !== 0) {
-        chdir($originalDir);
-        echo "\n\033[38;5;196mnpm operations failed\033[0m\n";
-        echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
-        return false;
-    }
-    $output = [];
-    
     $buildCommands = [
+        'composer install --no-interaction --prefer-dist --optimize-autoloader',
+        'composer build:node',
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
         'php artisan key:generate --force',
     ];
-    
+
     foreach($buildCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
-        
         if($returnCode !== 0 && !strpos($command, 'doctrine/dbal')) {
             chdir($originalDir);
             echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
@@ -269,26 +225,21 @@ BASH;
         }
         $output = [];
     }
-    
-    if (!is_dir('database')) {
-        mkdir('database', 0755, true);
-    }
-    
+
     if(!file_exists('database/database.sqlite')) {
         touch('database/database.sqlite');
     }
-    
-    if (file_exists('.env')) {
-        $envContent = file_get_contents('.env');
-        $envContent = str_replace('CACHE_STORE=database', 'CACHE_STORE=file', $envContent);
-        $envContent = str_replace('SESSION_DRIVER=database', 'SESSION_DRIVER=file', $envContent);
-        file_put_contents('.env', $envContent);
-    }
-    
+
+    $envContent = file_get_contents('.env');
+    $envContent = str_replace('CACHE_STORE=database', 'CACHE_STORE=file', $envContent);
+    $envContent = str_replace('SESSION_DRIVER=database', 'SESSION_DRIVER=file', $envContent);
+    file_put_contents('.env', $envContent);
+
     $problematicMigration = 'database/migrations/2025_08_04_033504_modify_users_table_remove_email_requirement.php';
     if(file_exists($problematicMigration)) {
         $fixedMigration = <<<'PHP'
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -307,7 +258,7 @@ return new class extends Migration {
             });
         }
     }
-    
+
     public function down(): void {
         Schema::dropIfExists('users');
     }
@@ -315,23 +266,22 @@ return new class extends Migration {
 PHP;
         file_put_contents($problematicMigration, $fixedMigration);
     }
-    
+
     $migrationCommands = [
         'php artisan migrate:fresh --force',
         'php artisan queue:table',
-        'php artisan cache:table', 
+        'php artisan cache:table',
         'php artisan session:table',
         'php artisan migrate --force'
     ];
-    
+
     foreach($migrationCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
-        
         if($returnCode !== 0 && !in_array(true, [
-            strpos($command, 'queue:table') !== false,
-            strpos($command, 'cache:table') !== false,
-            strpos($command, 'session:table') !== false
-        ])) {
+                strpos($command, 'queue:table') !== false,
+                strpos($command, 'cache:table') !== false,
+                strpos($command, 'session:table') !== false
+            ])) {
             chdir($originalDir);
             echo "\n\033[38;5;196mMigration command failed: $command\033[0m\n";
             echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
@@ -339,18 +289,18 @@ PHP;
         }
         $output = [];
     }
-    
+
     $clearCommands = [
         'php artisan config:clear',
         'php artisan route:clear',
         'php artisan view:clear'
     ];
-    
+
     foreach($clearCommands as $command) {
         exec($command . ' 2>&1', $output, $returnCode);
         $output = [];
     }
-    
+
     chdir($originalDir);
     return true;
 }
