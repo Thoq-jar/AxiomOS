@@ -228,7 +228,6 @@ BASH;
     file_put_contents($npmScriptPath, $npmScript);
     chmod($npmScriptPath, 0755);
     
-    echo "Executing: composer install --no-interaction --prefer-dist --optimize-autoloader\n";
     exec('composer install --no-interaction --prefer-dist --optimize-autoloader 2>&1', $output, $returnCode);
     
     if($returnCode !== 0) {
@@ -240,7 +239,7 @@ BASH;
     }
     $output = [];
     
-    echo "Executing npm operations via script...\n";
+    chdir($projectPath);
     exec("bash \"$npmScriptPath\" \"" . escapeshellarg(getcwd()) . "\" 2>&1", $output, $returnCode);
     
     unlink($npmScriptPath);
