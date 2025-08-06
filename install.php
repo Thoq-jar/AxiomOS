@@ -172,23 +172,7 @@ function readKey(): false|string {
     return $key;
 }
 
-$GLOBALS['outputLines'] = [];
-
-function addOutputLine($line): void {
-    global $outputLines;
-    
-    if(empty($line) || trim($line) === '') return;
-    
-    $outputLines[] = trim($line);
-    
-    if(count($outputLines) > 3) {
-        array_shift($outputLines);
-    }
-}
-
-function showProgress($message, $current, $total, $showOutput = true): void {
-    global $outputLines;
-    
+function showProgress($message, $current, $total): void {
     $barLength = 50;
     $percentage = ($current / $total) * 100;
     $filled = intval($percentage * $barLength / 100);
@@ -197,91 +181,11 @@ function showProgress($message, $current, $total, $showOutput = true): void {
     $bar = str_repeat("█", $filled) . str_repeat("░", $empty);
     $percentageText = number_format($percentage, 1);
 
-    echo "\r\033[2K";
-    
-    if($showOutput && !empty($outputLines)) {
-        for($i = 0; $i < 3; $i++) {
-            echo "\033[1A\033[2K";
-        }
-    }
-    
-    echo "\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%\n";
-    
-    if($showOutput) {
-        for($i = 0; $i < 3; $i++) {
-            if(isset($outputLines[$i])) {
-                echo "\033[90m" . $outputLines[$i] . "\033[0m\n";
-            } else {
-                echo "\n";
-            }
-        }
-
-        echo "\033[3A";
-    }
-    
+    echo "\r\033[2K\033[38;5;208m$message\033[0m [\033[38;5;214m$bar\033[0m] $percentageText%";
     flush();
 }
 
-function executeCommandWithOutput($command): bool {
-    global $outputLines;
-    
-    $descriptorSpec = [
-        0 => ["pipe", "r"],
-        1 => ["pipe", "w"],
-        2 => ["pipe", "w"]
-    ];
-    
-    $process = proc_open($command, $descriptorSpec, $pipes);
-    
-    if(!is_resource($process)) {
-        return false;
-    }
-    
-    fclose($pipes[0]);
-    
-    stream_set_blocking($pipes[1], false);
-    stream_set_blocking($pipes[2], false);
-    
-    $output = '';
-    $error = '';
-    
-    do {
-        $status = proc_get_status($process);
-        
-        $data = fread($pipes[1], 8192);
-        if($data !== false && $data !== '') {
-            $output .= $data;
-            $lines = explode("\n", $data);
-            foreach($lines as $line) {
-                addOutputLine($line);
-            }
-        }
-        
-        $data = fread($pipes[2], 8192);
-        if($data !== false && $data !== '') {
-            $error .= $data;
-            $lines = explode("\n", $data);
-            foreach($lines as $line) {
-                addOutputLine($line);
-            }
-        }
-        
-        usleep(10000);
-        
-    } while($status['running']);
-    
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-    
-    $returnCode = proc_close($process);
-    
-    return $returnCode === 0;
-}
-
 function cloneRepository($repoUrl, $targetPath): bool {
-    global $outputLines;
-    $outputLines = [];
-    
     if(!is_dir(dirname($targetPath))) {
         mkdir(dirname($targetPath), 0755, true);
     }
@@ -290,15 +194,16 @@ function cloneRepository($repoUrl, $targetPath): bool {
         exec("rm -rf $targetPath");
     }
 
-    $command = "git clone $repoUrl $targetPath";
-    
-    return executeCommandWithOutput($command);
+    $command = "git clone $repoUrl $targetPath 2>&1";
+    $output = [];
+    $returnCode = 0;
+
+    exec($command, $output, $returnCode);
+
+    return $returnCode === 0;
 }
 
 function buildProject($projectPath): bool {
-    global $outputLines;
-    $outputLines = [];
-    
     $originalDir = getcwd();
     chdir($projectPath);
 
@@ -311,15 +216,14 @@ function buildProject($projectPath): bool {
     ];
 
     foreach($buildCommands as $command) {
-        addOutputLine("Running: $command");
-        
-        if(!executeCommandWithOutput($command)) {
-            if(!strpos($command, 'doctrine/dbal')) {
-                chdir($originalDir);
-                addOutputLine("Build command failed: $command");
-                return false;
-            }
+        exec($command . ' 2>&1', $output, $returnCode);
+        if($returnCode !== 0 && !strpos($command, 'doctrine/dbal')) {
+            chdir($originalDir);
+            echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
+            echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
+            return false;
         }
+        $output = [];
     }
 
     if(!file_exists('database/database.sqlite')) {
@@ -372,19 +276,18 @@ PHP;
     ];
 
     foreach($migrationCommands as $command) {
-        addOutputLine("Running: $command");
-        
-        if(!executeCommandWithOutput($command)) {
-            if(!in_array(true, [
+        exec($command . ' 2>&1', $output, $returnCode);
+        if($returnCode !== 0 && !in_array(true, [
                 strpos($command, 'queue:table') !== false,
                 strpos($command, 'cache:table') !== false,
                 strpos($command, 'session:table') !== false
             ])) {
-                chdir($originalDir);
-                addOutputLine("Migration command failed: $command");
-                return false;
-            }
+            chdir($originalDir);
+            echo "\n\033[38;5;196mMigration command failed: $command\033[0m\n";
+            echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
+            return false;
         }
+        $output = [];
     }
 
     $clearCommands = [
@@ -394,8 +297,8 @@ PHP;
     ];
 
     foreach($clearCommands as $command) {
-        addOutputLine("Running: $command");
-        executeCommandWithOutput($command);
+        exec($command . ' 2>&1', $output, $returnCode);
+        $output = [];
     }
 
     chdir($originalDir);
@@ -446,9 +349,6 @@ WantedBy=multi-user.target
 }
 
 function installDependencies(): bool {
-    global $outputLines;
-    $outputLines = [];
-    
     $packages = ['git'];
 
     if(executeCommand('which apt-get')) {
@@ -463,8 +363,8 @@ function installDependencies(): bool {
         return false;
     }
 
-    addOutputLine("Installing dependencies...");
-    return executeCommandWithOutput($installCmd);
+    exec($installCmd . ' 2>/dev/null', $output, $returnCode);
+    return $returnCode === 0;
 }
 
 function getStoragePath($selectedStorage): string {
@@ -484,8 +384,6 @@ function getStoragePath($selectedStorage): string {
 
 /** @noinspection PhpUnusedParameterInspection */
 function install($selectedComponents, $storagePath, $startWithServer): bool {
-    global $outputLines;
-    
     $repoUrl = 'https://github.com/thoq-jar/axiom-os.git';
     $serviceName = 'axiom-os';
 
@@ -507,9 +405,7 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
 
     echo "\n\033[38;5;214mStarting Axiom Installation...\033[0m\n\n";
 
-    showProgress($tasks[0], 1, $totalTasks, false);
-    sleep(1);
-    
+    showProgress($tasks[0], 1, $totalTasks);
     $deps = checkDependencies();
     $missingRequired = array_filter($deps, function($dep) {
         return $dep['required'] && !$dep['available'];
@@ -540,10 +436,7 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
         return false;
     }
 
-    $outputLines = [];
-    showProgress($tasks[4], 5, $totalTasks, false);
-    sleep(1);
-    
+    showProgress($tasks[4], 5, $totalTasks);
     if(!createLaunchScript($storagePath)) {
         echo "\n\033[38;5;196mFailed to create launch script\033[0m\n";
         return false;
@@ -552,9 +445,7 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
     $currentTask = 6;
 
     if($startWithServer) {
-        showProgress($tasks[5], $currentTask, $totalTasks, false);
-        sleep(1);
-        
+        showProgress($tasks[5], $currentTask, $totalTasks);
         if(!createStartupScript($storagePath, $serviceName)) {
             echo "\n\033[38;5;196mFailed to create startup script\033[0m\n";
             return false;
@@ -567,8 +458,7 @@ function install($selectedComponents, $storagePath, $startWithServer): bool {
         $currentTask++;
     }
 
-    showProgress($tasks[count($tasks) - 1], $currentTask, $totalTasks, false);
-    sleep(1);
+    showProgress($tasks[count($tasks) - 1], $currentTask, $totalTasks);
 
     return true;
 }
@@ -633,15 +523,14 @@ function main(): void {
 
     $success = install($selectedComponents, $storagePath, $startWithServer);
 
-    echo "\n\n";
     if($success) {
-        echo "\033[38;5;214m✓ Installation completed successfully!\033[0m\n";
+        echo "\n\n\033[38;5;214m✓ Installation completed successfully!\033[0m\n";
         echo "\033[38;5;208mAxiom Homelab Server is now ready.\033[0m\n";
         if($startWithServer) {
             echo "\033[38;5;208mService started and enabled for boot.\033[0m\n";
         }
     } else {
-        echo "\033[38;5;196m✗ Installation failed!\033[0m\n";
+        echo "\n\n\033[38;5;196m✗ Installation failed!\033[0m\n";
         echo "\033[38;5;208mPlease check the errors above and try again.\033[0m\n";
     }
 }
