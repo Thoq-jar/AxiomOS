@@ -11,8 +11,15 @@ Linux:
 /bin/bash -c "$(curl -fsSL https://php.new/install/linux)"
 ```
 
+Now create these syslinks:
+```sh
+sudo ln ~/.config/herd-lite/bin/php /usr/local/bin/php
+sudo ln ~/.config/herd-lite/bin/composer /usr/local/bin/composer
+sudo ln ~/.config/herd-lite/bin/laravel /usr/local/bin/laravel
+```
+
 macOS:
-```bash
+```sh
 /bin/bash -c "$(curl -fsSL https://php.new/install/mac)" 
  ```
 
