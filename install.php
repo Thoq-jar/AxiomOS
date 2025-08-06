@@ -206,18 +206,46 @@ function cloneRepository($repoUrl, $targetPath): bool {
 function buildProject($projectPath): bool {
     $originalDir = getcwd();
     chdir($projectPath);
-
+    
+    // npm wont work without this i have no idea why
+    $npmPath = trim(shell_exec('which npm 2>/dev/null') ?: '');
+    
+    if (empty($npmPath)) {
+        $homeDir = getenv('HOME') ?: '/home/' . get_current_user();
+        $possibleNpmPaths = [
+            "$homeDir/.nvm/versions/node/v22.18.0/bin/npm",
+            "$homeDir/.nvm/current/bin/npm",
+            "/usr/local/bin/npm",
+            "/usr/bin/npm"
+        ];
+        
+        foreach ($possibleNpmPaths as $path) {
+            if (file_exists($path) && is_executable($path)) {
+                $npmPath = $path;
+                break;
+            }
+        }
+    }
+    
+    if (empty($npmPath)) {
+        echo "\n\033[38;5;196mError: npm not found. Please ensure Node.js and npm are properly installed.\033[0m\n";
+        chdir($originalDir);
+        return false;
+    }
+    
     $buildCommands = [
         'composer install --no-interaction --prefer-dist --optimize-autoloader',
-        'npm install',
-        'npm run build',
+        "$npmPath install",
+        "$npmPath run build",
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
         'php artisan key:generate --force',
     ];
-
+    
     foreach($buildCommands as $command) {
+        echo "Executing: $command\n";
         exec($command . ' 2>&1', $output, $returnCode);
+        
         if($returnCode !== 0 && !strpos($command, 'doctrine/dbal')) {
             chdir($originalDir);
             echo "\n\033[38;5;196mBuild command failed: $command\033[0m\n";
@@ -226,21 +254,26 @@ function buildProject($projectPath): bool {
         }
         $output = [];
     }
-
+    
+    if (!is_dir('database')) {
+        mkdir('database', 0755, true);
+    }
+    
     if(!file_exists('database/database.sqlite')) {
         touch('database/database.sqlite');
     }
-
-    $envContent = file_get_contents('.env');
-    $envContent = str_replace('CACHE_STORE=database', 'CACHE_STORE=file', $envContent);
-    $envContent = str_replace('SESSION_DRIVER=database', 'SESSION_DRIVER=file', $envContent);
-    file_put_contents('.env', $envContent);
-
+    
+    if (file_exists('.env')) {
+        $envContent = file_get_contents('.env');
+        $envContent = str_replace('CACHE_STORE=database', 'CACHE_STORE=file', $envContent);
+        $envContent = str_replace('SESSION_DRIVER=database', 'SESSION_DRIVER=file', $envContent);
+        file_put_contents('.env', $envContent);
+    }
+    
     $problematicMigration = 'database/migrations/2025_08_04_033504_modify_users_table_remove_email_requirement.php';
     if(file_exists($problematicMigration)) {
         $fixedMigration = <<<'PHP'
 <?php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -259,7 +292,7 @@ return new class extends Migration {
             });
         }
     }
-
+    
     public function down(): void {
         Schema::dropIfExists('users');
     }
@@ -267,22 +300,24 @@ return new class extends Migration {
 PHP;
         file_put_contents($problematicMigration, $fixedMigration);
     }
-
+    
     $migrationCommands = [
         'php artisan migrate:fresh --force',
         'php artisan queue:table',
-        'php artisan cache:table',
+        'php artisan cache:table', 
         'php artisan session:table',
         'php artisan migrate --force'
     ];
-
+    
     foreach($migrationCommands as $command) {
+        echo "Executing: $command\n";
         exec($command . ' 2>&1', $output, $returnCode);
+        
         if($returnCode !== 0 && !in_array(true, [
-                strpos($command, 'queue:table') !== false,
-                strpos($command, 'cache:table') !== false,
-                strpos($command, 'session:table') !== false
-            ])) {
+            strpos($command, 'queue:table') !== false,
+            strpos($command, 'cache:table') !== false,
+            strpos($command, 'session:table') !== false
+        ])) {
             chdir($originalDir);
             echo "\n\033[38;5;196mMigration command failed: $command\033[0m\n";
             echo "\033[38;5;196mOutput: " . implode("\n", $output) . "\033[0m\n";
@@ -290,21 +325,23 @@ PHP;
         }
         $output = [];
     }
-
+    
     $clearCommands = [
         'php artisan config:clear',
         'php artisan route:clear',
         'php artisan view:clear'
     ];
-
+    
     foreach($clearCommands as $command) {
+        echo "Executing: $command\n";
         exec($command . ' 2>&1', $output, $returnCode);
         $output = [];
     }
-
+    
     chdir($originalDir);
     return true;
 }
+
 
 function createLaunchScript($projectPath): bool {
     $scriptContent = "#!/bin/bash
