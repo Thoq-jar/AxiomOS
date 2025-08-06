@@ -325,7 +325,6 @@ function createStartupScript($projectPath, $serviceName): bool {
     $serviceContent = "[Unit]
 Description=Axiom OS Service
 After=network.target
-
 [Service]
 Type=simple
 User=root
@@ -333,22 +332,18 @@ WorkingDirectory=$projectPath
 ExecStart=/usr/local/bin/axiom-os
 Restart=always
 RestartSec=10
-
 [Install]
 WantedBy=multi-user.target
 ";
-
     $servicePath = "/etc/systemd/system/$serviceName.service";
-
     if(file_put_contents($servicePath, $serviceContent) === false) {
         return false;
     }
-
-    exec('systemctl daemon-reload', $output, $returnCode);
+    
+    exec('systemctl daemon-reload 2>/dev/null', $output, $returnCode);
     if($returnCode !== 0) return false;
-
-    exec("systemctl enable $serviceName", $output, $returnCode);
-
+    
+    exec("systemctl enable $serviceName 2>/dev/null", $output, $returnCode);
     return $returnCode === 0;
 }
 

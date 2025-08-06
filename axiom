@@ -1,18 +1,21 @@
 <?php
 
-class AxiomServer {
+class AxiomServer
+{
     private $pidFile;
     private $logFile;
     private $scriptDir;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->scriptDir = __DIR__;
         $this->pidFile = $this->scriptDir . '/axiom.pid';
         $this->logFile = $this->scriptDir . '/axiom.log';
     }
 
-    public function up() {
-        if($this->isRunning()) {
+    public function up()
+    {
+        if ($this->isRunning()) {
             echo "Axiom server is already running (PID: " . $this->getPid() . ")\n";
             return;
         }
@@ -31,17 +34,26 @@ class AxiomServer {
 
         sleep(2);
 
-        if($this->isRunning()) {
-            echo "Axiom server started successfully on http://0.0.0.0:9595\n";
-            echo "PID: " . $this->getPid() . "\n";
-            echo "Logs: " . $this->logFile . "\n";
+        if ($this->isRunning()) {
+            $hostname = gethostname();
+            $localIP = shell_exec("hostname -I | awk '{print $1}'") ?: 'localhost';
+            $localIP = trim($localIP);
+
+            echo "Axiom ● server started successfully on http://" . $localIP . ":9595\n";
+            echo "  ▸ Network";
+            echo "      ▸ Hostname: " . $hostname . "\n";
+            echo "      ▸ Local IP: http://" . $localIP . ":9595\n";
+            echo "  ▸ Proc Info: " . $this->getPid() . "\n";
+            echo "      ▸ PID: " . $this->getPid() . "\n";
+            echo "      ▸ Logs: " . $this->logFile . "\n";
         } else {
             echo "Failed to start Axiom server. Check logs: " . $this->logFile . "\n";
         }
     }
 
-    public function down(): void {
-        if(!$this->isRunning()) {
+    public function down(): void
+    {
+        if (!$this->isRunning()) {
             echo "Axiom server is not running\n";
             $this->cleanup();
             return;
@@ -54,12 +66,12 @@ class AxiomServer {
 
         sleep(2);
 
-        if($this->isRunning()) {
+        if ($this->isRunning()) {
             shell_exec("kill -9 $pid");
             sleep(1);
         }
 
-        if(!$this->isRunning()) {
+        if (!$this->isRunning()) {
             echo "Axiom server stopped successfully\n";
             $this->cleanup();
         } else {
@@ -67,8 +79,9 @@ class AxiomServer {
         }
     }
 
-    public function status() {
-        if($this->isRunning()) {
+    public function status()
+    {
+        if ($this->isRunning()) {
             echo "Axiom server is running (PID: " . $this->getPid() . ")\n";
             echo "Server URL: http://127.0.0.1:8000\n";
             echo "Logs: " . $this->logFile . "\n";
@@ -77,8 +90,9 @@ class AxiomServer {
         }
     }
 
-    public function logs() {
-        if(file_exists($this->logFile)) {
+    public function logs()
+    {
+        if (file_exists($this->logFile)) {
             echo "=== Axiom Server Logs ===\n";
             echo file_get_contents($this->logFile);
         } else {
@@ -86,9 +100,10 @@ class AxiomServer {
         }
     }
 
-    private function isRunning(): bool {
+    private function isRunning(): bool
+    {
         $pid = $this->getPid();
-        if(!$pid) {
+        if (!$pid) {
             return false;
         }
 
@@ -96,8 +111,9 @@ class AxiomServer {
         return str_contains($result, $pid);
     }
 
-    private function getPid() {
-        if(!file_exists($this->pidFile)) {
+    private function getPid()
+    {
+        if (!file_exists($this->pidFile)) {
             return null;
         }
 
@@ -105,14 +121,15 @@ class AxiomServer {
         return $pid ? (int)$pid : null;
     }
 
-    private function cleanup(): void {
-        if(file_exists($this->pidFile)) {
+    private function cleanup(): void
+    {
+        if (file_exists($this->pidFile)) {
             unlink($this->pidFile);
         }
     }
 }
 
-if($argc < 2) {
+if ($argc < 2) {
     echo "Usage: php axiom.php [up|down|status|logs]\n";
     echo "  up     - Start the Axiom server in background\n";
     echo "  down   - Stop the Axiom server\n";
@@ -124,7 +141,7 @@ if($argc < 2) {
 $server = new AxiomServer();
 $command = $argv[1];
 
-switch($command) {
+switch ($command) {
     case 'up':
         $server->up();
         break;
