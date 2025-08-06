@@ -259,7 +259,6 @@ BASH;
     ];
     
     foreach($buildCommands as $command) {
-        echo "Executing: $command\n";
         exec($command . ' 2>&1', $output, $returnCode);
         
         if($returnCode !== 0 && !strpos($command, 'doctrine/dbal')) {
@@ -326,7 +325,6 @@ PHP;
     ];
     
     foreach($migrationCommands as $command) {
-        echo "Executing: $command\n";
         exec($command . ' 2>&1', $output, $returnCode);
         
         if($returnCode !== 0 && !in_array(true, [
@@ -349,7 +347,6 @@ PHP;
     ];
     
     foreach($clearCommands as $command) {
-        echo "Executing: $command\n";
         exec($command . ' 2>&1', $output, $returnCode);
         $output = [];
     }
