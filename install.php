@@ -209,9 +209,11 @@ function buildProject($projectPath): bool {
 
     $buildCommands = [
         'composer install --no-interaction --prefer-dist --optimize-autoloader',
+        'npm install',
+        'npm run build',
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
-        'php artisan key:generate --force'
+        'php artisan key:generate --force',
     ];
 
     foreach($buildCommands as $command) {

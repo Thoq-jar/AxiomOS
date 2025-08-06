@@ -5,10 +5,16 @@ Prerequisites:
 - PHP 8.4+
 - UNIX (No support will be provided for Windows)
 
-### Install PHP
+### Install PHP and Node
 Linux:
 ```sh
 /bin/bash -c "$(curl -fsSL https://php.new/install/linux)"
+```
+
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+\. "$HOME/.nvm/nvm.sh"
+nvm install 22
 ```
 
 Now create these syslinks:
@@ -22,6 +28,12 @@ macOS:
 ```sh
 /bin/bash -c "$(curl -fsSL https://php.new/install/mac)" 
  ```
+
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+\. "$HOME/.nvm/nvm.sh"
+nvm install 22
+```
 
 ### Install Axiom
 ```shell
