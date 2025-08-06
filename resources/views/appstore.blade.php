@@ -10,9 +10,10 @@
         </header>
 
         <div class="mb-6">
+            <!-- Search apps -->
             <div class="relative">
                 <label for="search-input"></label><input type="text" id="search-input" placeholder="Search apps..."
-                                                         class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 pl-10 focus:border-zinc-500 focus:outline-none">
+                                                         class="w-[40vw] bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 pl-10 focus:border-zinc-500 focus:outline-none">
                 <div class="absolute left-3 top-3">
                     <svg class="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
