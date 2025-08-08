@@ -22,6 +22,8 @@ Now create these syslinks:
 sudo ln ~/.config/herd-lite/bin/php /usr/local/bin/php
 sudo ln ~/.config/herd-lite/bin/composer /usr/local/bin/composer
 sudo ln ~/.config/herd-lite/bin/laravel /usr/local/bin/laravel
+sudo ln -sf ~/.nvm/versions/node/$(ls ~/.nvm/versions/node/ | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)/bin/node /usr/local/bin/node
+sudo ln -sf ~/.nvm/versions/node/$(ls ~/.nvm/versions/node/ | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)/bin/npm /usr/local/bin/npm
 ```
 
 macOS:

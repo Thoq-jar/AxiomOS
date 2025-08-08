@@ -209,7 +209,8 @@ function buildProject($projectPath): bool {
 
     $buildCommands = [
         'composer install --no-interaction --prefer-dist --optimize-autoloader',
-        'composer build:node',
+        'npm install',
+        'npm run build',
         'composer require doctrine/dbal --no-interaction',
         'cp .env.example .env',
         'php artisan key:generate --force',
@@ -340,10 +341,10 @@ WantedBy=multi-user.target
     if(file_put_contents($servicePath, $serviceContent) === false) {
         return false;
     }
-    
+
     exec('systemctl daemon-reload 2>/dev/null', $output, $returnCode);
     if($returnCode !== 0) return false;
-    
+
     exec("systemctl enable $serviceName 2>/dev/null", $output, $returnCode);
     return $returnCode === 0;
 }
